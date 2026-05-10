@@ -17,7 +17,6 @@ export const TRANSLATIONS = {
     easiestSubtitle: "Top 5 each · n ≥ 15",
     findCandidate: "Find a candidate",
     findCandidateSubtitle: "Type a name to see how voters guessed them",
-    footerMade: "Made for a Romanian political guessing game",
     governmentMembersLoaded: "government members loaded",
     guessTheParty: "Guess the Party",
     guvern: "Government",
@@ -28,7 +27,6 @@ export const TRANSLATIONS = {
     overallAccuracy: "overall accuracy",
     overallAccuracyByParty: "Overall accuracy by party",
     overallAccuracySubtitle: "When actual party = X, percentage correctly identified",
-    press: "Press",
     randomWouldBe: "random would be",
     recentGuesses: "Recent guesses",
     noGuessesYet: "No guesses yet.",
@@ -49,8 +47,7 @@ export const TRANSLATIONS = {
     youGuessed: "you guessed",
     deputiesLoaded: "deputies loaded",
     howVotersRead: "How voters read each party",
-    confusionSubtitle: "Confusion matrix · diagonal = correct",
-    buyCoffee: "Buy me a coffee"
+    confusionSubtitle: "Confusion matrix · diagonal = correct"
   },
   ro: {
     actual: "Partid real",
@@ -66,7 +63,6 @@ export const TRANSLATIONS = {
     easiestSubtitle: "Top 5 fiecare · n ≥ 15",
     findCandidate: "Caută un candidat",
     findCandidateSubtitle: "Scrie un nume ca să vezi cum a fost ghicit",
-    footerMade: "Făcut pentru un joc politic românesc",
     governmentMembersLoaded: "membri ai Guvernului încărcați",
     guessTheParty: "Ghicește Partidul",
     guvern: "Guvern",
@@ -77,7 +73,6 @@ export const TRANSLATIONS = {
     overallAccuracy: "acuratețe totală",
     overallAccuracyByParty: "Acuratețe totală pe partid",
     overallAccuracySubtitle: "Când partidul real = X, procent identificat corect",
-    press: "Presă",
     randomWouldBe: "aleator ar fi",
     recentGuesses: "Ghicituri recente",
     noGuessesYet: "Nicio ghicire încă.",
@@ -98,8 +93,7 @@ export const TRANSLATIONS = {
     youGuessed: "ai ghicit",
     deputiesLoaded: "deputați încărcați",
     howVotersRead: "Cum citesc jucătorii fiecare partid",
-    confusionSubtitle: "Matrice de confuzie · diagonala = corect",
-    buyCoffee: "Buy me a coffee"
+    confusionSubtitle: "Matrice de confuzie · diagonala = corect"
   }
 } as const;
 
