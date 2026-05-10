@@ -5,12 +5,21 @@ import { getPartyOptions, normalizePartyKey, partyDisplayLabel, slugify } from "
 describe("party normalization", () => {
   it("maps Romanian parliamentary group labels to game party keys", () => {
     expect(normalizePartyKey("Grupul parlamentar al Partidului Social Democrat")).toBe("PSD");
+    expect(normalizePartyKey("Partidul Social Democrat")).toBe("PSD");
     expect(normalizePartyKey("Grupul parlamentar al Partidului Naţional Liberal")).toBe("PNL");
+    expect(normalizePartyKey("Partidul Naţional Liberal")).toBe("PNL");
     expect(normalizePartyKey("Grupul parlamentar al Uniunii Salvați România")).toBe("USR");
+    expect(normalizePartyKey("Uniunea Salvați România")).toBe("USR");
     expect(normalizePartyKey("Grupul parlamentar Alianța pentru Unirea Românilor")).toBe("AUR");
     expect(normalizePartyKey("Grupul parlamentar al Uniunii Democrate Maghiare din România")).toBe("UDMR");
+    expect(normalizePartyKey("Uniunea Democrată Maghiară din România")).toBe("UDMR");
     expect(normalizePartyKey("Grupul parlamentar POTVicelider")).toBe("POT");
     expect(normalizePartyKey("Grupul parlamentar PACE – Întâi România")).toBe("PACE");
+    expect(normalizePartyKey("Partidul Mișcarea Populară")).toBe("PMP");
+    expect(normalizePartyKey("Partidul Umanist Social Liberal")).toBe("PUSL");
+    expect(normalizePartyKey("Partidul Acțiunea Conservatoare")).toBe("PAC");
+    expect(normalizePartyKey("Partidului Național Conservator Român (PNCR)")).toBe("PNCR");
+    expect(normalizePartyKey("Dreptate și Frăție")).toBe("DREPTATE_FRATIE");
     expect(normalizePartyKey("Senatori neafiliați")).toBe("NEAFILIATI");
   });
 

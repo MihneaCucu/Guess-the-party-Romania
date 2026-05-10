@@ -140,13 +140,24 @@ function resize(source: string, target: string, maxPixels: number) {
   });
 }
 
-function updateMockData(photoUrls: Map<string, string>) {
-  let mock = readFileSync(mockPath, "utf8");
-  mock = mock.replace(/(\{\n    "id": "([^"]+)"[\s\S]*?    "photo_url": ")([^"]+)(",)/g, (match, prefix: string, id: string, _old: string, suffix: string) => {
-    const photoUrl = photoUrls.get(id);
-    return photoUrl ? `${prefix}${photoUrl}${suffix}` : match;
-  });
-  writeFileSync(mockPath, mock);
+function mockValue(row: Row, header: string): unknown {
+  if (header === "active") return row[header] === "true";
+  return row[header] ?? "";
+}
+
+function updateMockData(rows: Row[]) {
+  const items = rows.map((row) => ({
+    ...Object.fromEntries(headers.map((header) => [header, mockValue(row, header)])),
+    created_at: "__NOW__",
+    updated_at: "__NOW__"
+  }));
+  const body = JSON.stringify(items, null, 2)
+    .replaceAll('"created_at": "__NOW__"', '"created_at": now')
+    .replaceAll('"updated_at": "__NOW__"', '"updated_at": now')
+    .replaceAll("\n  {", "\n  {")
+    .replaceAll("\n    ", "\n    ");
+
+  writeFileSync(mockPath, `import type { Politician } from "@/lib/types";\n\nconst now = new Date("2026-05-10T00:00:00.000Z").toISOString();\n\nexport const MOCK_POLITICIANS: Politician[] = ${body};\n`);
 }
 
 async function main() {
@@ -156,7 +167,6 @@ async function main() {
 
   const rows = rowsFromCsv(readFileSync(csvPath, "utf8"));
   const approved = rows.filter((row) => row.active === "true" && row.review_status === "approved" && row.photo_url);
-  const photoUrls = new Map<string, string>();
   let completed = 0;
 
   for (const row of approved) {
@@ -172,7 +182,6 @@ async function main() {
     }
 
     row.photo_url = portraitUrl;
-    photoUrls.set(row.id, portraitUrl);
     completed += 1;
     if (completed % 25 === 0 || completed === approved.length) {
       process.stdout.write(`Cached ${completed}/${approved.length}: ${basename(portraitFile)}\n`);
@@ -180,7 +189,7 @@ async function main() {
   }
 
   writeFileSync(csvPath, rowsToCsv(rows));
-  updateMockData(photoUrls);
+  updateMockData(rows);
   process.stdout.write(`Done. Cached ${completed} photos into public/photos/portraits and public/photos/thumbs.\n`);
 }
 

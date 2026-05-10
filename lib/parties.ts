@@ -10,6 +10,11 @@ export const BASE_PARTIES: PartyOption[] = [
   { key: "SOS", label: "S.O.S.", color: "#222831", textColor: "#ffffff" },
   { key: "POT", label: "POT", color: "#7c4dff", textColor: "#ffffff" },
   { key: "PACE", label: "PACE", color: "#0f766e", textColor: "#ffffff" },
+  { key: "PMP", label: "PMP", color: "#2563eb", textColor: "#ffffff" },
+  { key: "PUSL", label: "PUSL", color: "#9333ea", textColor: "#ffffff" },
+  { key: "PAC", label: "PAC", color: "#475569", textColor: "#ffffff" },
+  { key: "PNCR", label: "PNCR", color: "#991b1b", textColor: "#ffffff" },
+  { key: "DREPTATE_FRATIE", label: "D&F", color: "#f97316", textColor: "#ffffff" },
   { key: "MINORITATI", label: "Minoritati", color: "#7f8da3", textColor: "#ffffff" },
   { key: "NEAFILIATI", label: "Neafiliati", color: "#56657a", textColor: "#ffffff" }
 ];
@@ -22,14 +27,20 @@ const LOCALIZED_PARTY_LABELS: Partial<Record<PartyKey, Record<Language, string>>
 const PARTY_ORDER = new Map(BASE_PARTIES.map((party, index) => [party.key, index]));
 
 const ALIASES: Array<[RegExp, PartyKey]> = [
-  [/partidului social democrat|^psd$/i, "PSD"],
-  [/partidului national liberal|partidului naţional liberal|^pnl$/i, "PNL"],
-  [/uniunii salvati romania|uniunii salvați românia|^usr$/i, "USR"],
+  [/partidul(?:ui)? social democrat|^psd$/i, "PSD"],
+  [/partidul(?:ui)? national liberal|partidul(?:ui)? naţional liberal|^pnl$/i, "PNL"],
+  [/uniunea salvati romania|uniunii salvati romania|uniunea salvați românia|uniunii salvați românia|^usr$/i, "USR"],
   [/alianta pentru unirea romanilor|alianța pentru unirea românilor|grupul parlamentar aur|^aur$/i, "AUR"],
-  [/uniunii democrate maghiare|^udmr|^rmdsz/i, "UDMR"],
+  [/uniunea democrata maghiara|uniunii democrate maghiare|^udmr|^rmdsz/i, "UDMR"],
   [/s\.?o\.?s\.?|^sos/i, "SOS"],
   [/partidul oamenilor tineri|grupul parlamentar pot|^pot$/i, "POT"],
   [/grupul parlamentar pace|intai romania|întâi românia|^pace$/i, "PACE"],
+  [/partidul miscarea populara|partidul mișcarea populară|^pmp$/i, "PMP"],
+  [/partidul umanist social liberal|^pusl$/i, "PUSL"],
+  [/partidul actiunea conservatoare|partidul acțiunea conservatoare|^pac$/i, "PAC"],
+  [/national conservator roman|național conservator român|^pncr$/i, "PNCR"],
+  [/dreptate si fratie|dreptate și frăție/i, "DREPTATE_FRATIE"],
+  [/independent/i, "NEAFILIATI"],
   [/minorit/i, "MINORITATI"],
   [/neafiliat/i, "NEAFILIATI"]
 ];

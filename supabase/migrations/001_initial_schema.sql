@@ -6,7 +6,7 @@ create table if not exists public.politicians (
   slug text not null unique,
   party_key text not null,
   party_label text not null,
-  chamber text not null check (chamber in ('Camera Deputatilor', 'Senat', 'Guvern')),
+  chamber text not null check (chamber in ('Camera Deputatilor', 'Senat', 'Guvern', 'Parlamentul European')),
   constituency text not null,
   photo_url text not null,
   source_url text not null,
@@ -37,7 +37,7 @@ create table if not exists public.guesses (
 create table if not exists public.session_seen_politicians (
   session_id uuid not null references public.sessions(id) on delete cascade,
   politician_id text not null references public.politicians(id) on delete cascade,
-  scope text not null default 'all' check (scope in ('all', 'Camera Deputatilor', 'Senat', 'Guvern')),
+  scope text not null default 'all' check (scope in ('all', 'Camera Deputatilor', 'Senat', 'Guvern', 'Parlamentul European')),
   seen_at timestamptz not null default now(),
   primary key (session_id, scope, politician_id)
 );

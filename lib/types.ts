@@ -9,7 +9,7 @@ export type PartyOption = {
 
 export type ReviewStatus = "approved" | "needs_review" | "rejected";
 
-export type PoliticianChamber = "Camera Deputatilor" | "Senat" | "Guvern";
+export type PoliticianChamber = "Camera Deputatilor" | "Senat" | "Guvern" | "Parlamentul European";
 export type PoliticianScope = "all" | PoliticianChamber;
 
 export type Politician = {

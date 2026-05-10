@@ -42,6 +42,7 @@ describe("shuffle", () => {
     expect(filterPoliticiansByScope(playable, "Senat").every((politician) => politician.chamber === "Senat")).toBe(true);
     expect(filterPoliticiansByScope(playable, "Camera Deputatilor").every((politician) => politician.chamber === "Camera Deputatilor")).toBe(true);
     expect(filterPoliticiansByScope(playable, "Guvern").every((politician) => politician.chamber === "Guvern")).toBe(true);
+    expect(filterPoliticiansByScope(playable, "Parlamentul European").every((politician) => politician.chamber === "Parlamentul European")).toBe(true);
     expect(filterPoliticiansByScope(playable, "all")).toHaveLength(playable.length);
   });
 });

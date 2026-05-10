@@ -41,11 +41,12 @@ const BEST_KEY = "gtp-ro-best";
 const RECENT_KEY = "gtp-ro-recent";
 const RESULT_REVEAL_MS = 2800;
 
-const SCOPE_OPTIONS: Array<{ key: string; labelKey: "all" | "senat" | "camera" | "guvern"; apiValue: string; scope: PoliticianScope; loadedLabelKey: "candidatesLoaded" | "senatorsLoaded" | "deputiesLoaded" | "governmentMembersLoaded" }> = [
+const SCOPE_OPTIONS: Array<{ key: string; labelKey: "all" | "senat" | "camera" | "guvern" | "meps"; apiValue: string; scope: PoliticianScope; loadedLabelKey: "candidatesLoaded" | "senatorsLoaded" | "deputiesLoaded" | "governmentMembersLoaded" | "europeanParliamentMembersLoaded" }> = [
   { key: "all", labelKey: "all", apiValue: "all", scope: "all", loadedLabelKey: "candidatesLoaded" },
   { key: "senat", labelKey: "senat", apiValue: "senat", scope: "Senat", loadedLabelKey: "senatorsLoaded" },
   { key: "camera", labelKey: "camera", apiValue: "camera", scope: "Camera Deputatilor", loadedLabelKey: "deputiesLoaded" },
-  { key: "guvern", labelKey: "guvern", apiValue: "guvern", scope: "Guvern", loadedLabelKey: "governmentMembersLoaded" }
+  { key: "guvern", labelKey: "guvern", apiValue: "guvern", scope: "Guvern", loadedLabelKey: "governmentMembersLoaded" },
+  { key: "meps", labelKey: "meps", apiValue: "meps", scope: "Parlamentul European", loadedLabelKey: "europeanParliamentMembersLoaded" }
 ];
 
 function isRecentGuess(value: unknown): value is RecentGuess {
@@ -253,11 +254,11 @@ export function Game() {
       </header>
 
       <section className="mx-auto mt-6 flex w-[390px] max-w-[calc(100vw-24px)] flex-col items-center">
-        <div className="mb-[10px] grid w-full grid-cols-4 gap-[5px] rounded-[10px] border border-[#e4e6ee] bg-white p-[5px] shadow-sm">
+        <div className="mb-[10px] grid w-full grid-cols-5 gap-[5px] rounded-[10px] border border-[#e4e6ee] bg-white p-[5px] shadow-sm">
           {SCOPE_OPTIONS.map((option) => (
             <button
               className={clsx(
-                "focus-ring h-[28px] rounded-[7px] px-2 text-[10px] font-black transition",
+                "focus-ring h-[28px] rounded-[7px] px-1.5 text-[10px] font-black transition",
                 scopeKey === option.key ? "bg-black text-white shadow-sm" : "bg-[#f7f8fb] text-slate-500 hover:bg-slate-100"
               )}
               disabled={loading && scopeKey === option.key}

@@ -17,6 +17,8 @@ export const TRANSLATIONS = {
     easiestSubtitle: "Top 5 each · n ≥ 15",
     findCandidate: "Find a candidate",
     findCandidateSubtitle: "Type a name to see how voters guessed them",
+    europeanParliamentName: "European Parliament",
+    europeanParliamentMembersLoaded: "MEPs loaded",
     governmentMembersLoaded: "government members loaded",
     guessTheParty: "Guess the Party",
     guvern: "Government",
@@ -30,6 +32,7 @@ export const TRANSLATIONS = {
     randomWouldBe: "random would be",
     recentGuesses: "Recent guesses",
     noGuessesYet: "No guesses yet.",
+    meps: "MEPs",
     reset: "Reset",
     searchPlaceholder: "Search candidate name...",
     seemsElsewhere: "Seems like they belong elsewhere",
@@ -63,6 +66,8 @@ export const TRANSLATIONS = {
     easiestSubtitle: "Top 5 fiecare · n ≥ 15",
     findCandidate: "Caută un candidat",
     findCandidateSubtitle: "Scrie un nume ca să vezi cum a fost ghicit",
+    europeanParliamentName: "Parlamentul European",
+    europeanParliamentMembersLoaded: "europarlamentari încărcați",
     governmentMembersLoaded: "membri ai Guvernului încărcați",
     guessTheParty: "Ghicește Partidul",
     guvern: "Guvern",
@@ -76,6 +81,7 @@ export const TRANSLATIONS = {
     randomWouldBe: "aleator ar fi",
     recentGuesses: "Ghicituri recente",
     noGuessesYet: "Nicio ghicire încă.",
+    meps: "Europarl.",
     reset: "Reset",
     searchPlaceholder: "Caută numele candidatului...",
     seemsElsewhere: "Par că aparțin altundeva",
@@ -105,5 +111,6 @@ export function chamberLabel(chamber: string, language: Language): string {
   if (chamber === "Camera Deputatilor") return TRANSLATIONS[language].chamberName;
   if (chamber === "Senat") return TRANSLATIONS[language].senat;
   if (chamber === "Guvern") return TRANSLATIONS[language].guvern;
+  if (chamber === "Parlamentul European") return TRANSLATIONS[language].europeanParliamentName;
   return chamber;
 }

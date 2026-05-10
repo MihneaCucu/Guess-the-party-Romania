@@ -14,7 +14,11 @@ const SCOPE_BY_PARAM: Record<string, PoliticianScope> = {
   deputati: "Camera Deputatilor",
   chamber: "Camera Deputatilor",
   guvern: "Guvern",
-  government: "Guvern"
+  government: "Guvern",
+  meps: "Parlamentul European",
+  mep: "Parlamentul European",
+  europarlamentari: "Parlamentul European",
+  "european-parliament": "Parlamentul European"
 };
 
 function parseScope(request: NextRequest): PoliticianScope {
