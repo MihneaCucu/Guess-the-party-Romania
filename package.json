@@ -1,0 +1,41 @@
+{
+  "name": "guess-the-party-ro",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1 -p 3007",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "import:senate": "tsx scripts/import-senate.ts",
+    "import:chamber": "tsx scripts/import-chamber.ts",
+    "import:government": "tsx scripts/import-government.ts",
+    "review:data": "tsx scripts/review-dataset.ts data/manual-review.csv"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "cheerio": "^1.0.0",
+    "clsx": "^2.1.1",
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.0.12",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.24.0",
+    "eslint-config-next": "^15.3.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  }
+}

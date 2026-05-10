@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f2f3f7;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+.focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus-ring:focus-visible {
+  outline-color: #111111;
+}
+
+.reveal-progress {
+  transform-origin: left center;
+  animation-name: reveal-progress-drain;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes reveal-progress-drain {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.dark body {
+  background: #080b12;
+  color: #e7eaf0;
+}
+
+.dark main {
+  background: #0b0f18 !important;
+  color: #e7eaf0 !important;
+}
+
+.dark header,
+.dark .bg-white {
+  background-color: #121824 !important;
+}
+
+.dark .bg-\[\#f3f3f7\] {
+  background-color: #0b0f18 !important;
+}
+
+.dark .bg-\[\#f7f8fb\],
+.dark .bg-slate-50 {
+  background-color: #1a2230 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #202a38 !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: #293447 !important;
+}
+
+.dark .bg-rose-50 {
+  background-color: #2a1720 !important;
+}
+
+.dark .bg-emerald-100 {
+  background-color: #102d24 !important;
+}
+
+.dark .text-\[\#202431\],
+.dark .text-slate-950,
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700 {
+  color: #f3f5f8 !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: #a9b3c3 !important;
+}
+
+.dark .text-slate-400 {
+  color: #79869a !important;
+}
+
+.dark .border-\[\#e6e8ee\],
+.dark .border-\[\#e4e6ee\],
+.dark .border-slate-100,
+.dark .border-slate-200 {
+  border-color: #253146 !important;
+}
+
+.dark .shadow-sm,
+.dark .shadow-\[0_16px_38px_rgba\(34\,39\,52\,0\.15\)\] {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38) !important;
+}
+
+.dark input {
+  background-color: #0f1520 !important;
+  border-color: #2a3648 !important;
+  color: #f3f5f8 !important;
+}
+
+.dark input::placeholder {
+  color: #7f8da3 !important;
+}
+
+.dark .theme-toggle {
+  background-color: #0f1520 !important;
+  border-color: #2a3648 !important;
+  color: #e7eaf0 !important;
+}
+
+.dark .theme-toggle:hover {
+  background-color: #182131 !important;
+}

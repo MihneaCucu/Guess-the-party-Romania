@@ -1,0 +1,353 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import NextImage from "next/image";
+import clsx from "clsx";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import type { PartyOption, Politician, PoliticianScope, PublicPolitician } from "@/lib/types";
+
+type RecentGuess = {
+  id: string;
+  name: string;
+  guessedParty: string;
+  actualParty: string;
+  correct: boolean;
+  photoUrl: string;
+};
+
+type RandomResponse = {
+  politician: PublicPolitician;
+  parties: PartyOption[];
+  totalLoaded: number;
+  remainingInCycle: number;
+  scope: PoliticianScope;
+};
+
+type GuessResponse = {
+  correct: boolean;
+  politician: Politician;
+};
+
+const BEST_KEY = "gtp-ro-best";
+const MAX_PHOTO_ATTEMPTS = 12;
+const RESULT_REVEAL_MS = 2800;
+
+const SCOPE_OPTIONS: Array<{ key: string; label: string; apiValue: string; scope: PoliticianScope; loadedLabel: string }> = [
+  { key: "all", label: "Toate", apiValue: "all", scope: "all", loadedLabel: "candidates" },
+  { key: "senat", label: "Senat", apiValue: "senat", scope: "Senat", loadedLabel: "senators" },
+  { key: "camera", label: "Camera", apiValue: "camera", scope: "Camera Deputatilor", loadedLabel: "deputies" },
+  { key: "guvern", label: "Guvern", apiValue: "guvern", scope: "Guvern", loadedLabel: "government members" }
+];
+
+const SAMPLE_RECENT_GUESSES: RecentGuess[] = [
+  { id: "sample-andrei-popescu", name: "Andrei Popescu", actualParty: "PSD", guessedParty: "USR", correct: false, photoUrl: "" },
+  { id: "sample-mihai-ionescu", name: "Mihai Ionescu", actualParty: "PNL", guessedParty: "AUR", correct: false, photoUrl: "" },
+  { id: "sample-elena-dumitrescu", name: "Elena Dumitrescu", actualParty: "USR", guessedParty: "PNL", correct: false, photoUrl: "" },
+  { id: "sample-radu-stan", name: "Radu Stan", actualParty: "AUR", guessedParty: "PSD", correct: false, photoUrl: "" },
+  { id: "sample-ioana-marin", name: "Ioana Marin", actualParty: "UDMR", guessedParty: "USR", correct: false, photoUrl: "" },
+  { id: "sample-vlad-georgescu", name: "Vlad Georgescu", actualParty: "PNL", guessedParty: "PSD", correct: false, photoUrl: "" },
+  { id: "sample-cristina-pavel", name: "Cristina Pavel", actualParty: "PSD", guessedParty: "AUR", correct: false, photoUrl: "" },
+  { id: "sample-alexandru-dobre", name: "Alexandru Dobre", actualParty: "USR", guessedParty: "PNL", correct: false, photoUrl: "" }
+];
+
+function preloadPhoto(url: string): Promise<"loaded" | "failed"> {
+  return new Promise((resolve) => {
+    const image = new window.Image();
+    image.onload = () => resolve("loaded");
+    image.onerror = () => resolve("failed");
+    image.src = url;
+  });
+}
+
+function photoSrc(url: string): string {
+  return `/api/photo?url=${encodeURIComponent(url)}`;
+}
+
+export function Game() {
+  const [politician, setPolitician] = useState<PublicPolitician | null>(null);
+  const [parties, setParties] = useState<PartyOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [photoStatus, setPhotoStatus] = useState<"idle" | "loaded" | "failed">("idle");
+  const [answer, setAnswer] = useState<GuessResponse | null>(null);
+  const [score, setScore] = useState({ correct: 0, total: 0 });
+  const [streak, setStreak] = useState(0);
+  const [best, setBest] = useState(0);
+  const [recent, setRecent] = useState<RecentGuess[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [totalLoaded, setTotalLoaded] = useState(0);
+  const [scopeKey, setScopeKey] = useState("all");
+  const [lastGuess, setLastGuess] = useState<PartyOption | null>(null);
+  const revealTimeoutRef = useRef<number | null>(null);
+
+  const partyByKey = useMemo(() => new Map(parties.map((party) => [party.key, party])), [parties]);
+  const visibleParties = parties;
+  const displayedRecent = recent.length > 0 ? recent : SAMPLE_RECENT_GUESSES;
+  const actualPartyLabel = answer ? partyByKey.get(answer.politician.party_key)?.label ?? answer.politician.party_label : "";
+  const activeScope = SCOPE_OPTIONS.find((option) => option.key === scopeKey) ?? SCOPE_OPTIONS[0];
+
+  const clearRevealTimers = useCallback(() => {
+    if (revealTimeoutRef.current) window.clearTimeout(revealTimeoutRef.current);
+    revealTimeoutRef.current = null;
+  }, []);
+
+  const loadNext = useCallback(async () => {
+    clearRevealTimers();
+    setLoading(true);
+    setAnswer(null);
+    setLastGuess(null);
+    setError(null);
+    setPolitician(null);
+    setPhotoStatus("idle");
+
+    try {
+      for (let attempt = 0; attempt < MAX_PHOTO_ATTEMPTS; attempt += 1) {
+        const response = await fetch(`/api/politicians/random?scope=${activeScope.apiValue}`, { cache: "no-store" });
+        if (!response.ok) throw new Error("Could not load a politician.");
+        const payload = (await response.json()) as RandomResponse;
+        const status = await preloadPhoto(photoSrc(payload.politician.photo_url));
+        setParties(payload.parties);
+        setTotalLoaded(payload.totalLoaded);
+
+        if (status === "loaded" || attempt === MAX_PHOTO_ATTEMPTS - 1) {
+          setPolitician(payload.politician);
+          setPhotoStatus(status);
+          break;
+        }
+      }
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }, [activeScope.apiValue, clearRevealTimers]);
+
+  useEffect(() => {
+    setBest(Number(window.localStorage.getItem(BEST_KEY) ?? "0"));
+    void loadNext();
+    return clearRevealTimers;
+  }, [clearRevealTimers, loadNext]);
+
+  async function submitGuess(party: PartyOption) {
+    if (!politician || answer || loading) return;
+
+    const nextStreakIfCorrect = streak + 1;
+    try {
+      const response = await fetch("/api/guesses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          politicianId: politician.id,
+          guessedParty: party.key,
+          currentStreak: streak,
+          bestStreak: best
+        })
+      });
+
+      if (!response.ok) throw new Error("Could not record your guess.");
+      const payload = (await response.json()) as GuessResponse;
+      const nextStreak = payload.correct ? nextStreakIfCorrect : 0;
+      const nextBest = Math.max(best, nextStreak);
+
+      setAnswer(payload);
+      setLastGuess(party);
+      setScore((current) => ({
+        correct: current.correct + (payload.correct ? 1 : 0),
+        total: current.total + 1
+      }));
+      setStreak(nextStreak);
+      setBest(nextBest);
+      window.localStorage.setItem(BEST_KEY, String(nextBest));
+      setRecent((items) => [
+        {
+          id: crypto.randomUUID(),
+          name: payload.politician.name,
+          guessedParty: party.label,
+          actualParty: partyByKey.get(payload.politician.party_key)?.label ?? payload.politician.party_label,
+          correct: payload.correct,
+          photoUrl: photoSrc(payload.politician.photo_url)
+        },
+        ...items
+      ].slice(0, 10));
+      clearRevealTimers();
+      revealTimeoutRef.current = window.setTimeout(() => {
+        void loadNext();
+      }, RESULT_REVEAL_MS);
+    } catch (guessError) {
+      setError(guessError instanceof Error ? guessError.message : "Something went wrong.");
+    }
+  }
+
+  function reset() {
+    clearRevealTimers();
+    setScore({ correct: 0, total: 0 });
+    setStreak(0);
+    setBest(0);
+    setRecent([]);
+    setAnswer(null);
+    setLastGuess(null);
+    window.localStorage.setItem(BEST_KEY, "0");
+    void loadNext();
+  }
+
+  return (
+    <main className="min-h-screen bg-[#f3f3f7] text-[#202431]">
+      <header className="flex min-h-[47px] items-center justify-between gap-3 border-b border-[#e6e8ee] bg-white px-3">
+        <nav className="flex min-w-0 flex-1 items-center gap-[6px] overflow-x-auto text-[12px] font-bold leading-none text-slate-600">
+          <h1 aria-label="Guess The Party RO" className="shrink-0 rounded-[6px] bg-black px-[10px] py-[8px] text-[12px] font-black text-white shadow-sm">
+            <Link href="/stats">Guess the Party · <span className="text-[10px] font-bold">stats →</span></Link>
+          </h1>
+        </nav>
+
+        <div className="flex shrink-0 items-center gap-[17px] text-center">
+          <div>
+            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">Score</div>
+            <div className="text-[19px] font-black leading-[0.9]">{score.correct} / {score.total}</div>
+          </div>
+          <div>
+            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">Streak</div>
+            <div className="text-[19px] font-black leading-[0.9]">{streak}</div>
+          </div>
+          <div>
+            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">Best</div>
+            <div className="text-[19px] font-black leading-[0.9]">{best}</div>
+          </div>
+          <button className="focus-ring rounded-[6px] border border-slate-200 bg-white px-[10px] py-[7px] text-[11px] font-bold text-slate-500 shadow-sm" onClick={reset} type="button">
+            Reset
+          </button>
+          <ThemeToggle />
+        </div>
+      </header>
+
+      <section className="mx-auto mt-6 flex w-[390px] max-w-[calc(100vw-24px)] flex-col items-center">
+        <div className="mb-[10px] grid w-full grid-cols-4 gap-[5px] rounded-[10px] border border-[#e4e6ee] bg-white p-[5px] shadow-sm">
+          {SCOPE_OPTIONS.map((option) => (
+            <button
+              className={clsx(
+                "focus-ring h-[28px] rounded-[7px] px-2 text-[10px] font-black transition",
+                scopeKey === option.key ? "bg-black text-white shadow-sm" : "bg-[#f7f8fb] text-slate-500 hover:bg-slate-100"
+              )}
+              disabled={loading && scopeKey === option.key}
+              key={option.key}
+              onClick={() => setScopeKey(option.key)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-full overflow-hidden rounded-[12px] bg-white shadow-[0_16px_38px_rgba(34,39,52,0.15)]">
+          <div className="relative aspect-square w-full bg-slate-200">
+            {loading ? <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200 via-slate-100 to-slate-300" aria-label="Loading photo" /> : null}
+            {error ? <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm font-bold text-red-700">{error}</div> : null}
+            {!loading && !error && politician && photoStatus === "loaded" ? (
+              <NextImage
+                alt="Romanian politician portrait"
+                className="h-full w-full object-cover"
+                height={640}
+                priority
+                unoptimized
+                src={photoSrc(politician.photo_url)}
+                width={640}
+              />
+            ) : null}
+            {!loading && !error && politician && photoStatus === "failed" ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-200 text-sm font-bold text-slate-500">
+                Photo unavailable
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-[7px] p-[10px]">
+            {visibleParties.length === 0 ? (
+              <div className="h-[28px] w-24 animate-pulse rounded-[6px] bg-slate-200" />
+            ) : (
+              visibleParties.map((party) => {
+                const isActual = answer?.politician.party_key === party.key;
+                const isDisabled = Boolean(answer) || loading || !politician || photoStatus === "idle";
+                return (
+                  <button
+                    className={clsx(
+                      "focus-ring h-[30px] min-w-[48px] rounded-[6px] px-[10px] text-[11px] font-black text-white shadow-sm transition",
+                      isDisabled ? "cursor-default opacity-75" : "hover:brightness-95",
+                      answer && !isActual ? "grayscale" : ""
+                    )}
+                    key={party.key}
+                    onClick={() => submitGuess(party)}
+                    disabled={isDisabled}
+                    style={{ backgroundColor: party.color, color: party.textColor ?? "#ffffff" }}
+                    type="button"
+                  >
+                    {party.label}
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {answer && lastGuess ? (
+            <div className="border-t border-slate-100 px-4 pb-4 pt-3 text-center">
+              <div className={clsx("mx-auto mb-2 inline-flex h-[22px] items-center rounded-full px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white", answer.correct ? "bg-emerald-500" : "bg-red-500")}>
+                {answer.correct ? "Correct" : "Wrong"}
+              </div>
+              <div className="mx-auto mb-3 h-[5px] w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  key={`${answer.politician.id}-${lastGuess.key}`}
+                  className={clsx("reveal-progress h-full rounded-full", answer.correct ? "bg-emerald-500" : "bg-red-500")}
+                  style={{
+                    animationDuration: `${RESULT_REVEAL_MS}ms`
+                  }}
+                />
+              </div>
+              <p className="text-[16px] font-black leading-tight text-slate-950">{answer.politician.name}</p>
+              <p className="mt-1 text-[11px] font-bold leading-snug text-slate-500">
+                {answer.politician.chamber}
+                {answer.politician.constituency ? ` · ${answer.politician.constituency}` : ""}
+              </p>
+              <p className="mt-2 text-[12px] font-bold text-slate-600">
+                {actualPartyLabel} · you guessed {lastGuess.label}
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        <p className="mt-[15px] text-center text-[11px] font-semibold text-slate-500">
+          {totalLoaded > 0 ? `${totalLoaded} ${activeScope.loadedLabel} loaded` : `${activeScope.loadedLabel} loaded`}
+        </p>
+      </section>
+
+      <section className="mx-auto mt-[32px] w-[390px] max-w-[calc(100vw-24px)] pb-8">
+        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Recent guesses</h2>
+        <ol className="mt-[10px] space-y-[7px]">
+          {displayedRecent.map((guess, index) => (
+            <li className="flex h-[52px] items-center gap-[9px] rounded-[9px] border border-slate-100 bg-white px-[9px] shadow-sm" key={guess.id}>
+              {guess.photoUrl ? (
+                <NextImage alt="" className="h-[32px] w-[32px] rounded-[5px] object-cover" height={64} src={guess.photoUrl} unoptimized width={64} />
+              ) : (
+                <span
+                  className={clsx(
+                    "h-[32px] w-[32px] rounded-[5px]",
+                    index % 4 === 0 && "bg-gradient-to-br from-slate-500 to-slate-300",
+                    index % 4 === 1 && "bg-gradient-to-br from-amber-400 to-slate-300",
+                    index % 4 === 2 && "bg-gradient-to-br from-sky-500 to-slate-200",
+                    index % 4 === 3 && "bg-gradient-to-br from-emerald-500 to-slate-300"
+                  )}
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12px] font-black leading-[1.2] text-slate-900">{guess.name}</p>
+                <p className="truncate text-[10px] font-semibold leading-[1.4] text-slate-500">
+                  {guess.actualParty} · you guessed {guess.guessedParty}
+                </p>
+              </div>
+              <span className={clsx("flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full text-[13px] font-black leading-none text-white", guess.correct ? "bg-emerald-500" : "bg-red-500")}>
+                {guess.correct ? "✓" : "×"}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </main>
+  );
+}
