@@ -1,4 +1,5 @@
 import type { PartyKey, PartyOption } from "@/lib/types";
+import type { Language } from "@/lib/i18n";
 
 export const BASE_PARTIES: PartyOption[] = [
   { key: "PSD", label: "PSD", color: "#e53b4a", textColor: "#ffffff" },
@@ -12,6 +13,11 @@ export const BASE_PARTIES: PartyOption[] = [
   { key: "MINORITATI", label: "Minoritati", color: "#7f8da3", textColor: "#ffffff" },
   { key: "NEAFILIATI", label: "Neafiliati", color: "#56657a", textColor: "#ffffff" }
 ];
+
+const LOCALIZED_PARTY_LABELS: Partial<Record<PartyKey, Record<Language, string>>> = {
+  MINORITATI: { en: "Minorities", ro: "Minorități" },
+  NEAFILIATI: { en: "Unaffiliated", ro: "Neafiliați" }
+};
 
 const PARTY_ORDER = new Map(BASE_PARTIES.map((party, index) => [party.key, index]));
 
@@ -52,6 +58,12 @@ export function normalizePartyKey(rawGroup: string): PartyKey {
 
 export function partyLabelFor(key: PartyKey, rawLabel?: string): string {
   return BASE_PARTIES.find((party) => party.key === key)?.label ?? rawLabel ?? key;
+}
+
+export function partyDisplayLabel(party: Pick<PartyOption, "key" | "label"> | PartyKey, language: Language): string {
+  const key = typeof party === "string" ? party : party.key;
+  const fallback = typeof party === "string" ? partyLabelFor(party) : party.label;
+  return LOCALIZED_PARTY_LABELS[key]?.[language] ?? fallback;
 }
 
 function fallbackColor(key: PartyKey): string {

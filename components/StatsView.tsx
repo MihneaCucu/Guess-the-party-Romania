@@ -8,7 +8,7 @@ import clsx from "clsx";
 import { LanguageToggle, useLanguage } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TRANSLATIONS } from "@/lib/i18n";
-import { BASE_PARTIES } from "@/lib/parties";
+import { BASE_PARTIES, partyDisplayLabel } from "@/lib/parties";
 import { thumbnailSrc } from "@/lib/photos";
 import type { PartyOption, PoliticianDifficulty, StatsSummary } from "@/lib/types";
 
@@ -37,6 +37,10 @@ function numberFormat(value: number): string {
 
 function partyFor(key: string): PartyOption {
   return BASE_PARTIES.find((party) => party.key === key) ?? { key, label: key, color: "#64748b", textColor: "#ffffff" };
+}
+
+function localizeParty(party: PartyOption, language: ReturnType<typeof useLanguage>): PartyOption {
+  return { ...party, label: partyDisplayLabel(party, language) };
 }
 
 function partyPill(party: PartyOption, compact = false) {
@@ -178,8 +182,8 @@ export function StatsView() {
     };
   }, []);
 
-  const parties = useMemo(() => PRIMARY_PARTIES.map(partyFor), []);
-  const partyMap = useMemo(() => new Map(BASE_PARTIES.map((party) => [party.key, party])), []);
+  const parties = useMemo(() => PRIMARY_PARTIES.map((key) => localizeParty(partyFor(key), language)), [language]);
+  const partyMap = useMemo(() => new Map(BASE_PARTIES.map((party) => [party.key, localizeParty(party, language)])), [language]);
   const accuracyRows = useMemo(() => {
     const live = new Map((stats?.partyAccuracy ?? []).map((party) => [party.party, party]));
     return parties.map((party) => {
@@ -233,8 +237,9 @@ export function StatsView() {
 
   const searchableMembers = stats?.members?.length ? stats.members : hardestRows;
   const selectedCandidate = searchableMembers.find((item) => item.name.toLowerCase().includes(query.toLowerCase())) ?? searchableMembers[0] ?? hardestRows[0] ?? sampleDifficulty("USR", 0);
-  const selectedParty = partyMap.get(selectedCandidate.party) ?? partyFor(selectedCandidate.party);
-  const topWrongParty = selectedCandidate.topWrongParty ? partyMap.get(selectedCandidate.topWrongParty) ?? partyFor(selectedCandidate.topWrongParty) : partyFor("PNL");
+  const resolveParty = (key: string) => partyMap.get(key) ?? localizeParty(partyFor(key), language);
+  const selectedParty = resolveParty(selectedCandidate.party);
+  const topWrongParty = selectedCandidate.topWrongParty ? resolveParty(selectedCandidate.topWrongParty) : resolveParty("PNL");
   const totalGuesses = stats?.totalGuesses ?? 0;
   const totalSessions = stats?.totalSessions ?? 0;
   const averageAccuracy = accuracyRows.reduce((sum, party) => sum + party.accuracy, 0) / Math.max(1, accuracyRows.length);
@@ -410,7 +415,7 @@ export function StatsView() {
                   {partyPill(selectedParty, true)}<span>{numberFormat(selectedCandidate.attempts)} {t.totalGuesses}</span>
                 </div>
                 <div className="mt-3 space-y-2">
-                  {[selectedParty, topWrongParty, partyFor(selectedParty.key === "PSD" ? "PNL" : "PSD")].map((party, index) => {
+                  {[selectedParty, topWrongParty, resolveParty(selectedParty.key === "PSD" ? "PNL" : "PSD")].map((party, index) => {
                     const value = index === 0 ? selectedCandidate.accuracy : index === 1 ? Math.min(0.55, 1 - selectedCandidate.accuracy) : 0.12;
                     return (
                       <div className="grid grid-cols-[72px_1fr_42px] items-center gap-2" key={`${party.key}-${index}`}>

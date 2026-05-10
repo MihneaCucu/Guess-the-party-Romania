@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatPersonName } from "@/lib/names";
-import { getPartyOptions, normalizePartyKey, slugify } from "@/lib/parties";
+import { getPartyOptions, normalizePartyKey, partyDisplayLabel, slugify } from "@/lib/parties";
 
 describe("party normalization", () => {
   it("maps Romanian parliamentary group labels to game party keys", () => {
@@ -25,6 +25,14 @@ describe("party normalization", () => {
 
     expect(first.color).toBe(second.color);
     expect(first.textColor).toBe("#ffffff");
+  });
+
+  it("localizes Romanian-only party labels for display", () => {
+    expect(partyDisplayLabel("MINORITATI", "en")).toBe("Minorities");
+    expect(partyDisplayLabel("NEAFILIATI", "en")).toBe("Unaffiliated");
+    expect(partyDisplayLabel("MINORITATI", "ro")).toBe("Minorități");
+    expect(partyDisplayLabel("NEAFILIATI", "ro")).toBe("Neafiliați");
+    expect(partyDisplayLabel("PSD", "en")).toBe("PSD");
   });
 
   it("normalizes all-caps official surname tokens for display", () => {

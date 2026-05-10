@@ -8,13 +8,16 @@ import clsx from "clsx";
 import { LanguageToggle, useLanguage } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { chamberLabel, TRANSLATIONS } from "@/lib/i18n";
+import { partyDisplayLabel } from "@/lib/parties";
 import { photoSrc, preloadPhoto, thumbnailSrc } from "@/lib/photos";
 import type { PartyOption, Politician, PoliticianScope, PublicPolitician } from "@/lib/types";
 
 type RecentGuess = {
   id: string;
   name: string;
+  guessedPartyKey?: string;
   guessedParty: string;
+  actualPartyKey?: string;
   actualParty: string;
   correct: boolean;
   photoUrl: string;
@@ -91,8 +94,9 @@ export function Game() {
   const revealTimeoutRef = useRef<number | null>(null);
   const nextPayloadRef = useRef<Promise<RandomResponse> | null>(null);
 
-  const partyByKey = useMemo(() => new Map(parties.map((party) => [party.key, party])), [parties]);
-  const visibleParties = parties;
+  const localizedParties = useMemo(() => parties.map((party) => ({ ...party, label: partyDisplayLabel(party, language) })), [language, parties]);
+  const partyByKey = useMemo(() => new Map(localizedParties.map((party) => [party.key, party])), [localizedParties]);
+  const visibleParties = localizedParties;
   const actualPartyLabel = answer ? partyByKey.get(answer.politician.party_key)?.label ?? answer.politician.party_label : "";
   const activeScope = SCOPE_OPTIONS.find((option) => option.key === scopeKey) ?? SCOPE_OPTIONS[0];
   const portraitSrc = politician ? photoSrc(politician.photo_url) : null;
@@ -180,7 +184,9 @@ export function Game() {
           {
             id: crypto.randomUUID(),
             name: payload.politician.name,
+            guessedPartyKey: party.key,
             guessedParty: party.label,
+            actualPartyKey: payload.politician.party_key,
             actualParty: partyByKey.get(payload.politician.party_key)?.label ?? payload.politician.party_label,
             correct: payload.correct,
             photoUrl: payload.politician.photo_url
@@ -358,7 +364,8 @@ export function Game() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[12px] font-black leading-[1.2] text-slate-900">{guess.name}</p>
                   <p className="truncate text-[10px] font-semibold leading-[1.4] text-slate-500">
-                    {guess.actualParty} · {t.youGuessed} {guess.guessedParty}
+                    {guess.actualPartyKey ? partyDisplayLabel({ key: guess.actualPartyKey, label: guess.actualParty }, language) : guess.actualParty} · {t.youGuessed}{" "}
+                    {guess.guessedPartyKey ? partyDisplayLabel({ key: guess.guessedPartyKey, label: guess.guessedParty }, language) : guess.guessedParty}
                   </p>
                 </div>
                 <span className={clsx("flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full text-[13px] font-black leading-none text-white", guess.correct ? "bg-emerald-500" : "bg-red-500")}>
