@@ -32,8 +32,8 @@ type GuessResponse = {
 };
 
 const BEST_KEY = "gtp-ro-best";
-const DIRECT_PHOTO_FALLBACK_MS = 1500;
-const PROXY_PHOTO_TIMEOUT_MS = 6000;
+const PRIMARY_PHOTO_TIMEOUT_MS = 4500;
+const FALLBACK_PHOTO_TIMEOUT_MS = 4500;
 const RESULT_REVEAL_MS = 2800;
 
 const SCOPE_OPTIONS: Array<{ key: string; labelKey: "all" | "senat" | "camera" | "guvern"; apiValue: string; scope: PoliticianScope; loadedLabelKey: "candidatesLoaded" | "senatorsLoaded" | "deputiesLoaded" | "governmentMembersLoaded" }> = [
@@ -65,7 +65,7 @@ export function Game() {
   const [parties, setParties] = useState<PartyOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [photoStatus, setPhotoStatus] = useState<"idle" | "loaded" | "failed">("idle");
-  const [photoMode, setPhotoMode] = useState<"direct" | "proxy">("direct");
+  const [photoMode, setPhotoMode] = useState<"proxy" | "direct">("proxy");
   const [answer, setAnswer] = useState<GuessResponse | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [streak, setStreak] = useState(0);
@@ -83,9 +83,9 @@ export function Game() {
   const actualPartyLabel = answer ? partyByKey.get(answer.politician.party_key)?.label ?? answer.politician.party_label : "";
   const activeScope = SCOPE_OPTIONS.find((option) => option.key === scopeKey) ?? SCOPE_OPTIONS[0];
   const portraitSrc = politician
-    ? photoMode === "direct"
-      ? politician.photo_url
-      : photoSrc(politician.photo_url)
+    ? photoMode === "proxy"
+      ? photoSrc(politician.photo_url)
+      : politician.photo_url
     : null;
 
   const clearRevealTimers = useCallback(() => {
@@ -101,7 +101,7 @@ export function Game() {
     setError(null);
     setPolitician(null);
     setPhotoStatus("idle");
-    setPhotoMode("direct");
+    setPhotoMode("proxy");
 
     try {
       const response = await fetch(`/api/politicians/random?scope=${activeScope.apiValue}`, { cache: "no-store" });
@@ -121,12 +121,12 @@ export function Game() {
     if (!politician || photoStatus !== "idle") return undefined;
 
     const timeout = window.setTimeout(() => {
-      if (photoMode === "direct") {
-        setPhotoMode("proxy");
+      if (photoMode === "proxy") {
+        setPhotoMode("direct");
       } else {
         setPhotoStatus("failed");
       }
-    }, photoMode === "direct" ? DIRECT_PHOTO_FALLBACK_MS : PROXY_PHOTO_TIMEOUT_MS);
+    }, photoMode === "proxy" ? PRIMARY_PHOTO_TIMEOUT_MS : FALLBACK_PHOTO_TIMEOUT_MS);
 
     return () => window.clearTimeout(timeout);
   }, [photoMode, photoStatus, politician]);
@@ -201,14 +201,14 @@ export function Game() {
 
   return (
     <main className="min-h-screen bg-[#f3f3f7] text-[#202431]">
-      <header className="flex min-h-[47px] items-center justify-between gap-3 border-b border-[#e6e8ee] bg-white px-3">
-        <nav className="flex min-w-0 flex-1 items-center gap-[6px] overflow-x-auto text-[12px] font-bold leading-none text-slate-600">
+      <header className="flex min-h-[47px] flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[#e6e8ee] bg-white px-3 py-2 sm:flex-nowrap sm:py-0">
+        <nav className="order-1 flex min-w-0 flex-1 items-center gap-[6px] overflow-x-auto text-[12px] font-bold leading-none text-slate-600">
           <h1 aria-label="Guess The Party RO" className="shrink-0 rounded-[6px] bg-black px-[10px] py-[8px] text-[12px] font-black text-white shadow-sm">
             <Link href="/stats">{t.guessTheParty} · <span className="text-[10px] font-bold">{t.stats.toLowerCase()} →</span></Link>
           </h1>
         </nav>
 
-        <div className="flex shrink-0 items-center gap-[17px] text-center">
+        <div className="order-2 flex w-full shrink-0 items-center justify-end gap-[12px] text-center sm:w-auto sm:gap-[17px]">
           <div>
             <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">{t.score}</div>
             <div className="text-[19px] font-black leading-[0.9]">{score.correct} / {score.total}</div>
@@ -260,15 +260,16 @@ export function Game() {
                 height={640}
                 key={`${politician.id}-${photoMode}`}
                 onError={() => {
-                  if (photoMode === "direct") {
-                    setPhotoMode("proxy");
+                  if (photoMode === "proxy") {
+                    setPhotoMode("direct");
                   } else {
                     setPhotoStatus("failed");
                   }
                 }}
                 onLoad={() => setPhotoStatus("loaded")}
                 priority
-                unoptimized
+                sizes="(max-width: 640px) calc(100vw - 24px), 390px"
+                unoptimized={photoMode === "proxy"}
                 src={portraitSrc}
                 width={640}
               />
