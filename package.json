@@ -13,6 +13,7 @@
     "import:senate": "tsx scripts/import-senate.ts",
     "import:chamber": "tsx scripts/import-chamber.ts",
     "import:government": "tsx scripts/import-government.ts",
+    "cache:photos": "tsx scripts/cache-photos.ts",
     "review:data": "tsx scripts/review-dataset.ts data/manual-review.csv"
   },
   "dependencies": {

@@ -6,15 +6,18 @@ const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
   devIndicators: false,
-  images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "www.senat.ro" },
-      { protocol: "https", hostname: "senat.ro" },
-      { protocol: "http", hostname: "www.cdep.ro" },
-      { protocol: "https", hostname: "www.cdep.ro" },
-      { protocol: "https", hostname: "www.gov.ro" },
-      { protocol: "https", hostname: "gov.ro" }
-    ]
+  async headers() {
+    return [
+      {
+        source: "/photos/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable"
+          }
+        ]
+      }
+    ];
   },
   typedRoutes: true,
   outputFileTracingRoot: projectRoot
