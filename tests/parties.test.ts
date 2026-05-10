@@ -36,6 +36,11 @@ describe("party normalization", () => {
     expect(first.textColor).toBe("#ffffff");
   });
 
+  it("only returns parties present in the current candidate set", () => {
+    expect(getPartyOptions(["PSD", "PNL"]).map((party) => party.key)).toEqual(["PSD", "PNL"]);
+    expect(getPartyOptions(["PSD", "PUSL"]).map((party) => party.key)).toEqual(["PSD", "PUSL"]);
+  });
+
   it("localizes Romanian-only party labels for display", () => {
     expect(partyDisplayLabel("MINORITATI", "en")).toBe("Minorities");
     expect(partyDisplayLabel("NEAFILIATI", "en")).toBe("Unaffiliated");

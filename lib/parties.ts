@@ -87,7 +87,7 @@ function fallbackColor(key: PartyKey): string {
 }
 
 export function getPartyOptions(keys: PartyKey[]): PartyOption[] {
-  const uniqueKeys = Array.from(new Set([...BASE_PARTIES.map((party) => party.key), ...keys]));
+  const uniqueKeys = Array.from(new Set(keys));
 
   return uniqueKeys
     .map((key) => {
