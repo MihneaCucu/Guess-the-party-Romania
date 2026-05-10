@@ -137,12 +137,14 @@ a {
   color: #7f8da3 !important;
 }
 
-.dark .theme-toggle {
+.dark .theme-toggle,
+.dark .language-toggle {
   background-color: #0f1520 !important;
   border-color: #2a3648 !important;
   color: #e7eaf0 !important;
 }
 
-.dark .theme-toggle:hover {
+.dark .theme-toggle:hover,
+.dark .language-toggle:hover {
   background-color: #182131 !important;
 }

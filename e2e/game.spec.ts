@@ -3,8 +3,12 @@ import { expect, test } from "@playwright/test";
 test("plays a full guess flow", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Guess The Party RO" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "All" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Senate" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Chamber" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Government" })).toBeVisible();
   await expect(page.getByText(/\d+ candidates loaded/)).toBeVisible({ timeout: 15000 });
-  await page.getByRole("button", { name: "Guvern" }).click();
+  await page.getByRole("button", { name: "Government" }).click();
   await expect(page.getByText(/\d+ government members loaded/)).toBeVisible({ timeout: 15000 });
   await expect(page.getByAltText("Romanian politician portrait")).toBeVisible({ timeout: 15000 });
   await page.getByRole("button", { name: "PSD" }).click();

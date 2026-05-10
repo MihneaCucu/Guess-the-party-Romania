@@ -1,0 +1,113 @@
+export type Language = "en" | "ro";
+
+export const LANGUAGE_STORAGE_KEY = "gtp-ro-language";
+
+export const TRANSLATIONS = {
+  en: {
+    actual: "Actual",
+    all: "All",
+    averageSession: "Average / session",
+    best: "Best",
+    camera: "Chamber",
+    candidatesLoaded: "candidates loaded",
+    chamberName: "Chamber of Deputies",
+    correct: "Correct",
+    candidate: "Candidate",
+    easiestTitle: "Easiest candidates per party",
+    easiestSubtitle: "Top 5 each · n ≥ 15",
+    findCandidate: "Find a candidate",
+    findCandidateSubtitle: "Type a name to see how voters guessed them",
+    footerMade: "Made for a Romanian political guessing game",
+    governmentMembersLoaded: "government members loaded",
+    guessTheParty: "Guess the Party",
+    guvern: "Government",
+    hardestTitle: "Hardest candidates per party",
+    hardestSubtitle: "Candidates viewers consistently misread",
+    liveLabel: "Live · updates every 30 seconds",
+    longestSession: "Longest session",
+    overallAccuracy: "overall accuracy",
+    overallAccuracyByParty: "Overall accuracy by party",
+    overallAccuracySubtitle: "When actual party = X, percentage correctly identified",
+    press: "Press",
+    randomWouldBe: "random would be",
+    recentGuesses: "Recent guesses",
+    reset: "Reset",
+    searchPlaceholder: "Search candidate name...",
+    seemsElsewhere: "Seems like they belong elsewhere",
+    seemsElsewhereSubtitle: "Candidates most often misread as each party · top 5 each",
+    senat: "Senate",
+    senatorsLoaded: "senators loaded",
+    sessions: "Sessions",
+    stats: "Stats",
+    streak: "Streak",
+    score: "Score",
+    totalGuesses: "total guesses",
+    votes: "Votes",
+    wrong: "Wrong",
+    wrongGuess: "Wrong guess",
+    youGuessed: "you guessed",
+    deputiesLoaded: "deputies loaded",
+    howVotersRead: "How voters read each party",
+    confusionSubtitle: "Confusion matrix · diagonal = correct",
+    buyCoffee: "Buy me a coffee"
+  },
+  ro: {
+    actual: "Partid real",
+    all: "Toate",
+    averageSession: "Medie / sesiune",
+    best: "Record",
+    camera: "Camera",
+    candidatesLoaded: "candidați încărcați",
+    chamberName: "Camera Deputaților",
+    correct: "Corect",
+    candidate: "Candidat",
+    easiestTitle: "Cei mai ușor de recunoscut pe partid",
+    easiestSubtitle: "Top 5 fiecare · n ≥ 15",
+    findCandidate: "Caută un candidat",
+    findCandidateSubtitle: "Scrie un nume ca să vezi cum a fost ghicit",
+    footerMade: "Făcut pentru un joc politic românesc",
+    governmentMembersLoaded: "membri ai Guvernului încărcați",
+    guessTheParty: "Ghicește Partidul",
+    guvern: "Guvern",
+    hardestTitle: "Cei mai greu de recunoscut pe partid",
+    hardestSubtitle: "Candidați pe care lumea îi confundă constant",
+    liveLabel: "Live · se actualizează la fiecare 30 de secunde",
+    longestSession: "Cea mai lungă sesiune",
+    overallAccuracy: "acuratețe totală",
+    overallAccuracyByParty: "Acuratețe totală pe partid",
+    overallAccuracySubtitle: "Când partidul real = X, procent identificat corect",
+    press: "Presă",
+    randomWouldBe: "aleator ar fi",
+    recentGuesses: "Ghicituri recente",
+    reset: "Reset",
+    searchPlaceholder: "Caută numele candidatului...",
+    seemsElsewhere: "Par că aparțin altundeva",
+    seemsElsewhereSubtitle: "Candidați confundați cel mai des cu fiecare partid · top 5 fiecare",
+    senat: "Senat",
+    senatorsLoaded: "senatori încărcați",
+    sessions: "Sesiuni",
+    stats: "Statistici",
+    streak: "Serie",
+    score: "Scor",
+    totalGuesses: "ghicituri totale",
+    votes: "Voturi",
+    wrong: "Greșit",
+    wrongGuess: "Greșeală frecventă",
+    youGuessed: "ai ghicit",
+    deputiesLoaded: "deputați încărcați",
+    howVotersRead: "Cum citesc jucătorii fiecare partid",
+    confusionSubtitle: "Matrice de confuzie · diagonala = corect",
+    buyCoffee: "Buy me a coffee"
+  }
+} as const;
+
+export function isLanguage(value: string | null): value is Language {
+  return value === "en" || value === "ro";
+}
+
+export function chamberLabel(chamber: string, language: Language): string {
+  if (chamber === "Camera Deputatilor") return TRANSLATIONS[language].chamberName;
+  if (chamber === "Senat") return TRANSLATIONS[language].senat;
+  if (chamber === "Guvern") return TRANSLATIONS[language].guvern;
+  return chamber;
+}

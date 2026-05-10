@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import clsx from "clsx";
+import { LanguageToggle, useLanguage } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { TRANSLATIONS } from "@/lib/i18n";
 import { BASE_PARTIES } from "@/lib/parties";
 import type { PartyOption, PoliticianDifficulty, StatsSummary } from "@/lib/types";
 
@@ -153,6 +155,8 @@ function CandidateRow({ item, index, right, subline }: { item: PoliticianDifficu
 }
 
 export function StatsView() {
+  const language = useLanguage();
+  const t = TRANSLATIONS[language];
   const [stats, setStats] = useState<StatsSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -248,29 +252,30 @@ export function StatsView() {
       <header className="flex min-h-[47px] items-center justify-between gap-3 border-b border-[#e6e8ee] bg-white px-3">
         <nav className="flex min-w-0 flex-1 items-center gap-[6px] overflow-x-auto text-[12px] font-bold leading-none text-slate-600">
           <Link className="shrink-0 rounded-[6px] border border-slate-200 bg-white px-[10px] py-[8px] shadow-sm" href="/">
-            Guess the Party
+            {t.guessTheParty}
           </Link>
           <h1 aria-label="Stats" className="shrink-0 rounded-[6px] bg-black px-[10px] py-[8px] text-[12px] font-black text-white shadow-sm">
-            Stats
+            {t.stats}
           </h1>
         </nav>
 
         <div className="flex shrink-0 items-center gap-[17px] text-center">
           <div>
-            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">Score</div>
+            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">{t.score}</div>
             <div className="text-[19px] font-black leading-[0.9]">0 / 0</div>
           </div>
           <div>
-            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">Streak</div>
+            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">{t.streak}</div>
             <div className="text-[19px] font-black leading-[0.9]">0</div>
           </div>
           <div>
-            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">Best</div>
+            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">{t.best}</div>
             <div className="text-[19px] font-black leading-[0.9]">0</div>
           </div>
           <button className="focus-ring rounded-[6px] border border-slate-200 bg-white px-[10px] py-[7px] text-[11px] font-bold text-slate-500 shadow-sm" type="button">
-            Reset
+            {t.reset}
           </button>
+          <LanguageToggle />
           <ThemeToggle />
           <button aria-label="Close" className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-black text-[15px] font-bold leading-none text-white" type="button">
             ×
@@ -279,22 +284,22 @@ export function StatsView() {
       </header>
 
       <div className="mx-auto w-[860px] max-w-[calc(100vw-28px)] py-16">
-        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500"><span className="text-emerald-500">●</span> Live · updates every 30 seconds</div>
-        <h2 className="mt-3 text-[34px] font-black leading-none tracking-[-0.02em] text-slate-950">Stats</h2>
+        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500"><span className="text-emerald-500">●</span> {t.liveLabel}</div>
+        <h2 className="mt-3 text-[34px] font-black leading-none tracking-[-0.02em] text-slate-950">{t.stats}</h2>
         <p className="mt-2 text-[13px] font-semibold text-slate-500">
-          {pct(averageAccuracy)} overall accuracy · random would be {wholePct(1 / Math.max(1, parties.length))} · {numberFormat(totalSessions)} sessions
+          {pct(averageAccuracy)} {t.overallAccuracy} · {t.randomWouldBe} {wholePct(1 / Math.max(1, parties.length))} · {numberFormat(totalSessions)} {t.sessions.toLowerCase()}
         </p>
 
         {error ? <p className="mt-6 rounded-[9px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</p> : null}
         <section className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <MetricCard color="#20a96b" label="Votes" value={numberFormat(totalGuesses)} />
-          <MetricCard color="#2f8fea" label="Sessions" value={numberFormat(totalSessions)} />
-          <MetricCard color="#f6a829" label="Average / session" value={(stats?.averagePerSession ?? 0).toFixed(1)} />
-          <MetricCard color="#e53b4a" label="Longest session" value={numberFormat(stats?.longestSession ?? 0)} />
+          <MetricCard color="#20a96b" label={t.votes} value={numberFormat(totalGuesses)} />
+          <MetricCard color="#2f8fea" label={t.sessions} value={numberFormat(totalSessions)} />
+          <MetricCard color="#f6a829" label={t.averageSession} value={(stats?.averagePerSession ?? 0).toFixed(1)} />
+          <MetricCard color="#e53b4a" label={t.longestSession} value={numberFormat(stats?.longestSession ?? 0)} />
         </section>
 
         <section className="mt-8">
-          <SectionHeader subtitle="When actual party = X, percentage correctly identified" title="Overall accuracy by party" />
+          <SectionHeader subtitle={t.overallAccuracySubtitle} title={t.overallAccuracyByParty} />
           <div className="rounded-[10px] border border-slate-100 bg-white px-5 py-4 shadow-sm">
             <div className="space-y-3">
               {accuracyRows.map((party) => (
@@ -314,7 +319,7 @@ export function StatsView() {
         </section>
 
         <section className="mt-8">
-          <SectionHeader subtitle="Confusion matrix · diagonal = correct" title="How voters read each party" />
+          <SectionHeader subtitle={t.confusionSubtitle} title={t.howVotersRead} />
           <div className="overflow-x-auto rounded-[10px] border border-slate-100 bg-white p-5 shadow-sm">
             <table className="w-full min-w-[650px] border-separate border-spacing-[4px] text-center text-[12px] font-black">
               <thead>
@@ -346,7 +351,7 @@ export function StatsView() {
         </section>
 
         <section className="mt-8">
-          <SectionHeader subtitle="Top 5 each · n ≥ 15" title="Easiest candidates per party" />
+          <SectionHeader subtitle={t.easiestSubtitle} title={t.easiestTitle} />
           <div className="grid gap-4 md:grid-cols-2">
             {easiestGroups.map(({ party, items }) => (
               <div className="rounded-[10px] border border-slate-100 bg-white p-4 shadow-sm" key={party.key}>
@@ -358,10 +363,10 @@ export function StatsView() {
         </section>
 
         <section className="mt-8">
-          <SectionHeader subtitle="Candidates viewers consistently misread" title="Hardest candidates per party" />
+          <SectionHeader subtitle={t.hardestSubtitle} title={t.hardestTitle} />
           <div className="rounded-[10px] border border-slate-100 bg-white p-4 shadow-sm">
             <div className="hidden grid-cols-[1fr_72px_110px_70px] gap-3 border-b border-slate-100 pb-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400 md:grid">
-              <div>Candidate</div><div>Actual</div><div>Wrong guess</div><div className="text-right">Correct</div>
+              <div>{t.candidate}</div><div>{t.actual}</div><div>{t.wrongGuess}</div><div className="text-right">{t.correct}</div>
             </div>
             <ol>
               {hardestRows.map((item, index) => {
@@ -381,7 +386,7 @@ export function StatsView() {
         </section>
 
         <section className="mt-8">
-          <SectionHeader subtitle="Candidates most often misread as each party · top 5 each" title="Seems like they belong elsewhere" />
+          <SectionHeader subtitle={t.seemsElsewhereSubtitle} title={t.seemsElsewhere} />
           <div className="grid gap-4 md:grid-cols-2">
             {mistakenGroups.map(({ party, items }) => (
               <div className="rounded-[10px] border border-slate-100 bg-white p-4 shadow-sm" key={party.key}>
@@ -389,7 +394,7 @@ export function StatsView() {
                 <ol>{items.map((item, index) => {
                   const actual = partyMap.get(item.party) ?? partyFor(item.party);
                   const share = item.topWrongCount && item.attempts ? item.topWrongCount / item.attempts : 0.28 + index * 0.04;
-                  return <CandidateRow index={index} item={item} key={`${party.key}-${item.politicianId}-${index}`} right={pct(share)} subline={`Actual ${actual.label}`} />;
+                  return <CandidateRow index={index} item={item} key={`${party.key}-${item.politicianId}-${index}`} right={pct(share)} subline={`${t.actual} ${actual.label}`} />;
                 })}</ol>
               </div>
             ))}
@@ -397,12 +402,12 @@ export function StatsView() {
         </section>
 
         <section className="mt-8">
-          <SectionHeader subtitle="Type a name to see how voters guessed them" title="Find a candidate" />
+          <SectionHeader subtitle={t.findCandidateSubtitle} title={t.findCandidate} />
           <div className="rounded-[10px] border border-slate-100 bg-white p-4 shadow-sm">
             <input
               className="h-[38px] w-full rounded-[7px] border border-slate-200 bg-white px-3 text-[13px] font-bold text-slate-800 outline-none placeholder:text-slate-400 focus:border-slate-400"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search candidate name..."
+              placeholder={t.searchPlaceholder}
               value={query}
             />
             <div className="mt-4 flex items-start gap-3 rounded-[9px] bg-slate-50 p-3">
@@ -410,7 +415,7 @@ export function StatsView() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-black text-slate-950">{selectedCandidate.name}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-500">
-                  {partyPill(selectedParty, true)}<span>{numberFormat(selectedCandidate.attempts)} total guesses</span>
+                  {partyPill(selectedParty, true)}<span>{numberFormat(selectedCandidate.attempts)} {t.totalGuesses}</span>
                 </div>
                 <div className="mt-3 space-y-2">
                   {[selectedParty, topWrongParty, partyFor(selectedParty.key === "PSD" ? "PNL" : "PSD")].map((party, index) => {
@@ -430,9 +435,9 @@ export function StatsView() {
         </section>
 
         <footer className="mt-12 flex flex-wrap items-center justify-center gap-3 pb-8 text-[11px] font-bold text-slate-400">
-          <span>Made for a Romanian political guessing game</span>
-          <span>☕ Buy me a coffee</span>
-          <span>Press</span>
+          <span>{t.footerMade}</span>
+          <span>☕ {t.buyCoffee}</span>
+          <span>{t.press}</span>
         </footer>
       </div>
     </main>

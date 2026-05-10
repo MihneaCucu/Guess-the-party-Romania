@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import clsx from "clsx";
+import { LanguageToggle, useLanguage } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { chamberLabel, TRANSLATIONS } from "@/lib/i18n";
 import type { PartyOption, Politician, PoliticianScope, PublicPolitician } from "@/lib/types";
 
 type RecentGuess = {
@@ -33,11 +35,11 @@ const BEST_KEY = "gtp-ro-best";
 const MAX_PHOTO_ATTEMPTS = 12;
 const RESULT_REVEAL_MS = 2800;
 
-const SCOPE_OPTIONS: Array<{ key: string; label: string; apiValue: string; scope: PoliticianScope; loadedLabel: string }> = [
-  { key: "all", label: "Toate", apiValue: "all", scope: "all", loadedLabel: "candidates" },
-  { key: "senat", label: "Senat", apiValue: "senat", scope: "Senat", loadedLabel: "senators" },
-  { key: "camera", label: "Camera", apiValue: "camera", scope: "Camera Deputatilor", loadedLabel: "deputies" },
-  { key: "guvern", label: "Guvern", apiValue: "guvern", scope: "Guvern", loadedLabel: "government members" }
+const SCOPE_OPTIONS: Array<{ key: string; labelKey: "all" | "senat" | "camera" | "guvern"; apiValue: string; scope: PoliticianScope; loadedLabelKey: "candidatesLoaded" | "senatorsLoaded" | "deputiesLoaded" | "governmentMembersLoaded" }> = [
+  { key: "all", labelKey: "all", apiValue: "all", scope: "all", loadedLabelKey: "candidatesLoaded" },
+  { key: "senat", labelKey: "senat", apiValue: "senat", scope: "Senat", loadedLabelKey: "senatorsLoaded" },
+  { key: "camera", labelKey: "camera", apiValue: "camera", scope: "Camera Deputatilor", loadedLabelKey: "deputiesLoaded" },
+  { key: "guvern", labelKey: "guvern", apiValue: "guvern", scope: "Guvern", loadedLabelKey: "governmentMembersLoaded" }
 ];
 
 const SAMPLE_RECENT_GUESSES: RecentGuess[] = [
@@ -65,6 +67,8 @@ function photoSrc(url: string): string {
 }
 
 export function Game() {
+  const language = useLanguage();
+  const t = TRANSLATIONS[language];
   const [politician, setPolitician] = useState<PublicPolitician | null>(null);
   const [parties, setParties] = useState<PartyOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,26 +199,27 @@ export function Game() {
       <header className="flex min-h-[47px] items-center justify-between gap-3 border-b border-[#e6e8ee] bg-white px-3">
         <nav className="flex min-w-0 flex-1 items-center gap-[6px] overflow-x-auto text-[12px] font-bold leading-none text-slate-600">
           <h1 aria-label="Guess The Party RO" className="shrink-0 rounded-[6px] bg-black px-[10px] py-[8px] text-[12px] font-black text-white shadow-sm">
-            <Link href="/stats">Guess the Party · <span className="text-[10px] font-bold">stats →</span></Link>
+            <Link href="/stats">{t.guessTheParty} · <span className="text-[10px] font-bold">{t.stats.toLowerCase()} →</span></Link>
           </h1>
         </nav>
 
         <div className="flex shrink-0 items-center gap-[17px] text-center">
           <div>
-            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">Score</div>
+            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">{t.score}</div>
             <div className="text-[19px] font-black leading-[0.9]">{score.correct} / {score.total}</div>
           </div>
           <div>
-            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">Streak</div>
+            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">{t.streak}</div>
             <div className="text-[19px] font-black leading-[0.9]">{streak}</div>
           </div>
           <div>
-            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">Best</div>
+            <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">{t.best}</div>
             <div className="text-[19px] font-black leading-[0.9]">{best}</div>
           </div>
           <button className="focus-ring rounded-[6px] border border-slate-200 bg-white px-[10px] py-[7px] text-[11px] font-bold text-slate-500 shadow-sm" onClick={reset} type="button">
-            Reset
+            {t.reset}
           </button>
+          <LanguageToggle />
           <ThemeToggle />
         </div>
       </header>
@@ -232,7 +237,7 @@ export function Game() {
               onClick={() => setScopeKey(option.key)}
               type="button"
             >
-              {option.label}
+              {t[option.labelKey]}
             </button>
           ))}
         </div>
@@ -289,7 +294,7 @@ export function Game() {
           {answer && lastGuess ? (
             <div className="border-t border-slate-100 px-4 pb-4 pt-3 text-center">
               <div className={clsx("mx-auto mb-2 inline-flex h-[22px] items-center rounded-full px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white", answer.correct ? "bg-emerald-500" : "bg-red-500")}>
-                {answer.correct ? "Correct" : "Wrong"}
+                {answer.correct ? t.correct : t.wrong}
               </div>
               <div className="mx-auto mb-3 h-[5px] w-full overflow-hidden rounded-full bg-slate-100">
                 <div
@@ -302,23 +307,23 @@ export function Game() {
               </div>
               <p className="text-[16px] font-black leading-tight text-slate-950">{answer.politician.name}</p>
               <p className="mt-1 text-[11px] font-bold leading-snug text-slate-500">
-                {answer.politician.chamber}
+                {chamberLabel(answer.politician.chamber, language)}
                 {answer.politician.constituency ? ` · ${answer.politician.constituency}` : ""}
               </p>
               <p className="mt-2 text-[12px] font-bold text-slate-600">
-                {actualPartyLabel} · you guessed {lastGuess.label}
+                {actualPartyLabel} · {t.youGuessed} {lastGuess.label}
               </p>
             </div>
           ) : null}
         </div>
 
         <p className="mt-[15px] text-center text-[11px] font-semibold text-slate-500">
-          {totalLoaded > 0 ? `${totalLoaded} ${activeScope.loadedLabel} loaded` : `${activeScope.loadedLabel} loaded`}
+          {totalLoaded > 0 ? `${totalLoaded} ${t[activeScope.loadedLabelKey]}` : t[activeScope.loadedLabelKey]}
         </p>
       </section>
 
       <section className="mx-auto mt-[32px] w-[390px] max-w-[calc(100vw-24px)] pb-8">
-        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Recent guesses</h2>
+        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{t.recentGuesses}</h2>
         <ol className="mt-[10px] space-y-[7px]">
           {displayedRecent.map((guess, index) => (
             <li className="flex h-[52px] items-center gap-[9px] rounded-[9px] border border-slate-100 bg-white px-[9px] shadow-sm" key={guess.id}>
@@ -338,7 +343,7 @@ export function Game() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[12px] font-black leading-[1.2] text-slate-900">{guess.name}</p>
                 <p className="truncate text-[10px] font-semibold leading-[1.4] text-slate-500">
-                  {guess.actualParty} · you guessed {guess.guessedParty}
+                  {guess.actualParty} · {t.youGuessed} {guess.guessedParty}
                 </p>
               </div>
               <span className={clsx("flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full text-[13px] font-black leading-none text-white", guess.correct ? "bg-emerald-500" : "bg-red-500")}>
