@@ -43,9 +43,11 @@ a {
 
 .reveal-progress {
   transform-origin: left center;
+  transform: scaleX(1);
   animation-name: reveal-progress-drain;
   animation-timing-function: linear;
   animation-fill-mode: forwards;
+  will-change: transform;
 }
 
 @keyframes reveal-progress-drain {

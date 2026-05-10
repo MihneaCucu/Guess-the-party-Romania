@@ -32,9 +32,8 @@ type GuessResponse = {
 };
 
 const BEST_KEY = "gtp-ro-best";
-const MAX_PHOTO_ATTEMPTS = 12;
-const DIRECT_PHOTO_TIMEOUT_MS = 2500;
-const PROXY_PHOTO_TIMEOUT_MS = 4000;
+const DIRECT_PHOTO_FALLBACK_MS = 1500;
+const PROXY_PHOTO_TIMEOUT_MS = 6000;
 const RESULT_REVEAL_MS = 2800;
 
 const SCOPE_OPTIONS: Array<{ key: string; labelKey: "all" | "senat" | "camera" | "guvern"; apiValue: string; scope: PoliticianScope; loadedLabelKey: "candidatesLoaded" | "senatorsLoaded" | "deputiesLoaded" | "governmentMembersLoaded" }> = [
@@ -55,42 +54,8 @@ const SAMPLE_RECENT_GUESSES: RecentGuess[] = [
   { id: "sample-alexandru-dobre", name: "Alexandru Dobre", actualParty: "USR", guessedParty: "PNL", correct: false, photoUrl: "" }
 ];
 
-function preloadPhoto(url: string, timeoutMs: number): Promise<"loaded" | "failed"> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const image = new window.Image();
-    const timeout = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      image.src = "";
-      resolve("failed");
-    }, timeoutMs);
-
-    image.onload = () => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeout);
-      resolve("loaded");
-    };
-    image.onerror = () => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeout);
-      resolve("failed");
-    };
-    image.src = url;
-  });
-}
-
 function photoSrc(url: string): string {
   return `/api/photo?url=${encodeURIComponent(url)}`;
-}
-
-async function resolvePhotoSrc(url: string): Promise<string | null> {
-  if (await preloadPhoto(url, DIRECT_PHOTO_TIMEOUT_MS) === "loaded") return url;
-  const proxied = photoSrc(url);
-  if (await preloadPhoto(proxied, PROXY_PHOTO_TIMEOUT_MS) === "loaded") return proxied;
-  return null;
 }
 
 export function Game() {
@@ -100,7 +65,7 @@ export function Game() {
   const [parties, setParties] = useState<PartyOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [photoStatus, setPhotoStatus] = useState<"idle" | "loaded" | "failed">("idle");
-  const [resolvedPhotoSrc, setResolvedPhotoSrc] = useState<string | null>(null);
+  const [photoMode, setPhotoMode] = useState<"direct" | "proxy">("direct");
   const [answer, setAnswer] = useState<GuessResponse | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [streak, setStreak] = useState(0);
@@ -117,6 +82,11 @@ export function Game() {
   const displayedRecent = recent.length > 0 ? recent : SAMPLE_RECENT_GUESSES;
   const actualPartyLabel = answer ? partyByKey.get(answer.politician.party_key)?.label ?? answer.politician.party_label : "";
   const activeScope = SCOPE_OPTIONS.find((option) => option.key === scopeKey) ?? SCOPE_OPTIONS[0];
+  const portraitSrc = politician
+    ? photoMode === "direct"
+      ? politician.photo_url
+      : photoSrc(politician.photo_url)
+    : null;
 
   const clearRevealTimers = useCallback(() => {
     if (revealTimeoutRef.current) window.clearTimeout(revealTimeoutRef.current);
@@ -131,30 +101,35 @@ export function Game() {
     setError(null);
     setPolitician(null);
     setPhotoStatus("idle");
-    setResolvedPhotoSrc(null);
+    setPhotoMode("direct");
 
     try {
-      for (let attempt = 0; attempt < MAX_PHOTO_ATTEMPTS; attempt += 1) {
-        const response = await fetch(`/api/politicians/random?scope=${activeScope.apiValue}`, { cache: "no-store" });
-        if (!response.ok) throw new Error("Could not load a politician.");
-        const payload = (await response.json()) as RandomResponse;
-        const loadedPhotoSrc = await resolvePhotoSrc(payload.politician.photo_url);
-        setParties(payload.parties);
-        setTotalLoaded(payload.totalLoaded);
-
-        if (loadedPhotoSrc || attempt === MAX_PHOTO_ATTEMPTS - 1) {
-          setPolitician(payload.politician);
-          setResolvedPhotoSrc(loadedPhotoSrc);
-          setPhotoStatus(loadedPhotoSrc ? "loaded" : "failed");
-          break;
-        }
-      }
+      const response = await fetch(`/api/politicians/random?scope=${activeScope.apiValue}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Could not load a politician.");
+      const payload = (await response.json()) as RandomResponse;
+      setParties(payload.parties);
+      setTotalLoaded(payload.totalLoaded);
+      setPolitician(payload.politician);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }
   }, [activeScope.apiValue, clearRevealTimers]);
+
+  useEffect(() => {
+    if (!politician || photoStatus !== "idle") return undefined;
+
+    const timeout = window.setTimeout(() => {
+      if (photoMode === "direct") {
+        setPhotoMode("proxy");
+      } else {
+        setPhotoStatus("failed");
+      }
+    }, photoMode === "direct" ? DIRECT_PHOTO_FALLBACK_MS : PROXY_PHOTO_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [photoMode, photoStatus, politician]);
 
   useEffect(() => {
     setBest(Number(window.localStorage.getItem(BEST_KEY) ?? "0"));
@@ -274,16 +249,27 @@ export function Game() {
 
         <div className="w-full overflow-hidden rounded-[12px] bg-white shadow-[0_16px_38px_rgba(34,39,52,0.15)]">
           <div className="relative aspect-square w-full bg-slate-200">
-            {loading ? <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200 via-slate-100 to-slate-300" aria-label="Loading photo" /> : null}
+            {loading || (!error && politician && photoStatus === "idle") ? (
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200 via-slate-100 to-slate-300" aria-label="Loading photo" />
+            ) : null}
             {error ? <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm font-bold text-red-700">{error}</div> : null}
-            {!loading && !error && politician && photoStatus === "loaded" && resolvedPhotoSrc ? (
+            {!loading && !error && politician && photoStatus !== "failed" && portraitSrc ? (
               <NextImage
                 alt="Romanian politician portrait"
-                className="h-full w-full object-cover"
+                className={clsx("h-full w-full object-cover transition-opacity duration-150", photoStatus === "loaded" ? "opacity-100" : "opacity-0")}
                 height={640}
+                key={`${politician.id}-${photoMode}`}
+                onError={() => {
+                  if (photoMode === "direct") {
+                    setPhotoMode("proxy");
+                  } else {
+                    setPhotoStatus("failed");
+                  }
+                }}
+                onLoad={() => setPhotoStatus("loaded")}
                 priority
                 unoptimized
-                src={resolvedPhotoSrc}
+                src={portraitSrc}
                 width={640}
               />
             ) : null}
@@ -300,7 +286,7 @@ export function Game() {
             ) : (
               visibleParties.map((party) => {
                 const isActual = answer?.politician.party_key === party.key;
-                const isDisabled = Boolean(answer) || loading || !politician || photoStatus === "idle";
+                const isDisabled = Boolean(answer) || loading || !politician || photoStatus !== "loaded";
                 return (
                   <button
                     className={clsx(
@@ -329,7 +315,7 @@ export function Game() {
               <div className="mx-auto mb-3 h-[5px] w-full overflow-hidden rounded-full bg-slate-100">
                 <div
                   key={`${answer.politician.id}-${lastGuess.key}`}
-                  className={clsx("reveal-progress h-full rounded-full", answer.correct ? "bg-emerald-500" : "bg-red-500")}
+                  className={clsx("reveal-progress h-full w-full rounded-full", answer.correct ? "bg-emerald-500" : "bg-red-500")}
                   style={{
                     animationDuration: `${RESULT_REVEAL_MS}ms`
                   }}
