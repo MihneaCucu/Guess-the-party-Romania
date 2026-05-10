@@ -53,7 +53,7 @@ function partyPill(party: PartyOption, compact = false) {
 }
 
 function Avatar({ item, index }: { item?: Pick<PoliticianDifficulty, "photoUrl" | "name">; index: number }) {
-  const [imageMode, setImageMode] = useState<"proxy" | "direct" | "failed">("proxy");
+  const [imageMode, setImageMode] = useState<"direct" | "proxy" | "failed">("direct");
 
   if (item?.photoUrl && imageMode !== "failed") {
     return (
@@ -61,8 +61,8 @@ function Avatar({ item, index }: { item?: Pick<PoliticianDifficulty, "photoUrl" 
         alt=""
         className="h-[34px] w-[34px] rounded-[6px] object-cover"
         height={68}
-        onError={() => setImageMode((current) => current === "proxy" ? "direct" : "failed")}
-        src={imageMode === "proxy" ? photoSrc(item.photoUrl) : item.photoUrl}
+        onError={() => setImageMode((current) => current === "direct" ? "proxy" : "failed")}
+        src={imageMode === "direct" ? item.photoUrl : photoSrc(item.photoUrl)}
         unoptimized
         width={68}
       />
