@@ -55,6 +55,7 @@ const SAMPLE_RECENT_GUESSES: RecentGuess[] = [
 ];
 
 function photoSrc(url: string): string {
+  if (url.startsWith("/")) return url;
   return `/api/photo?url=${encodeURIComponent(url)}`;
 }
 
