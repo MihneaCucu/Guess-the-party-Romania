@@ -1,4 +1,5 @@
 import { getPartyOptions } from "@/lib/parties";
+import { formatPersonName } from "@/lib/names";
 import type { GuessRecord, Politician, PoliticianDifficulty, SessionRecord, StatsSummary } from "@/lib/types";
 
 type PoliticianAggregate = {
@@ -74,7 +75,7 @@ export function computeStats(
 
       return {
         politicianId: aggregate.politician.id,
-        name: aggregate.politician.name,
+        name: formatPersonName(aggregate.politician.name),
         party: aggregate.politician.party_key,
         partyLabel: partyLabels.get(aggregate.politician.party_key) ?? aggregate.politician.party_label,
         photoUrl: aggregate.politician.photo_url,
@@ -90,7 +91,7 @@ export function computeStats(
     .filter((politician) => Boolean(politician.photo_url))
     .map((politician): PoliticianDifficulty => ({
       politicianId: politician.id,
-      name: politician.name,
+      name: formatPersonName(politician.name),
       party: politician.party_key,
       partyLabel: partyLabels.get(politician.party_key) ?? politician.party_label,
       photoUrl: politician.photo_url,

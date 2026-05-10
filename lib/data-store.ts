@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getPartyOptions } from "@/lib/parties";
 import { MOCK_POLITICIANS } from "@/lib/mock-data";
+import { formatPersonName } from "@/lib/names";
 import { filterPoliticiansByScope, playablePoliticians, selectUnseenPolitician } from "@/lib/shuffle";
 import { computeStats } from "@/lib/stats";
 import type { GuessRecord, GuessResult, PartyOption, Politician, PoliticianScope, PublicPolitician, RandomPoliticianResult, SessionRecord, StatsSummary } from "@/lib/types";
@@ -42,7 +43,11 @@ function publicPolitician(politician: Politician): PublicPolitician {
   void review_status;
   void created_at;
   void updated_at;
-  return safe;
+  return { ...safe, name: formatPersonName(safe.name) };
+}
+
+function displayPolitician(politician: Politician): Politician {
+  return { ...politician, name: formatPersonName(politician.name) };
 }
 
 function memorySession(sessionId: string): SessionRecord {
@@ -216,7 +221,7 @@ export async function recordGuess(
       created_at: now
     });
 
-    return { correct, politician };
+    return { correct, politician: displayPolitician(politician) };
   }
 
   const { data: politician, error: politicianError } = await db
@@ -270,7 +275,7 @@ export async function recordGuess(
   });
 
   if (guessError) throw guessError;
-  return { correct, politician: typedPolitician };
+  return { correct, politician: displayPolitician(typedPolitician) };
 }
 
 export async function getStats(): Promise<StatsSummary> {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { formatPersonName } from "@/lib/names";
 import { getPartyOptions, normalizePartyKey, slugify } from "@/lib/parties";
 
 describe("party normalization", () => {
@@ -24,5 +25,12 @@ describe("party normalization", () => {
 
     expect(first.color).toBe(second.color);
     expect(first.textColor).toBe("#ffffff");
+  });
+
+  it("normalizes all-caps official surname tokens for display", () => {
+    expect(formatPersonName("ABRUDEAN Mircea")).toBe("Abrudean Mircea");
+    expect(formatPersonName("ALEXANDRU Victoria-Violeta")).toBe("Alexandru Victoria-Violeta");
+    expect(formatPersonName("ANTAL István-Loránt")).toBe("Antal István-Loránt");
+    expect(formatPersonName("Adrian-Felician Cozma")).toBe("Adrian-Felician Cozma");
   });
 });
