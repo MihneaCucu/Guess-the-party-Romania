@@ -223,7 +223,7 @@ export function Game() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f3f3f7] text-[#202431]">
+    <main className="flex min-h-screen flex-col bg-[#f3f3f7] text-[#202431]">
       <header className="flex min-h-[47px] flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[#e6e8ee] bg-white px-3 py-2 sm:flex-nowrap sm:py-0">
         <nav className="order-1 flex min-w-0 flex-1 items-center gap-[6px] overflow-x-auto text-[12px] font-bold leading-none text-slate-600">
           <h1 aria-label="Guess The Party RO" className="shrink-0 rounded-[6px] bg-black px-[10px] py-[8px] text-[12px] font-black text-white shadow-sm">
@@ -377,7 +377,7 @@ export function Game() {
           </ol>
         )}
       </section>
-      <SocialFooter />
+      <SocialFooter className="mt-auto pt-12" />
     </main>
   );
 }

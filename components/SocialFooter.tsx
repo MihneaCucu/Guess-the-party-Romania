@@ -1,6 +1,8 @@
-export function SocialFooter() {
+import clsx from "clsx";
+
+export function SocialFooter({ className }: { className?: string }) {
   return (
-    <footer className="mt-12 flex flex-wrap items-center justify-center gap-3 pb-8 text-slate-400">
+    <footer className={clsx("mt-12 flex flex-wrap items-center justify-center gap-3 pb-8 text-slate-400", className)}>
       <a
         aria-label="Mihnea Cucu on X"
         className="focus-ring inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-slate-950"
