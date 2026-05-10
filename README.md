@@ -15,6 +15,8 @@ The game uses active, reviewed public figures with usable portrait photos. The c
 
 The main game supports category filters for `All`, `Senate`, `Chamber`, `Government`, and `MEPs`. Party answer buttons are scoped to the selected category, so EP-only affiliations such as `PMP`, `PUSL`, `PAC`, `PNCR`, and `D&F` only appear when they can be a correct answer.
 
+The home screen also includes a deterministic Daily Challenge: 10 politicians selected from the Romania calendar day, with the same challenge served to every player for that day and a native share/copy result action at completion.
+
 ## Local Development
 
 ```bash

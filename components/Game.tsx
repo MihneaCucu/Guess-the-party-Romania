@@ -32,13 +32,34 @@ type RandomResponse = {
   scope: PoliticianScope;
 };
 
+type DailyChallengeResponse = {
+  date: string;
+  politicians: PublicPolitician[];
+  parties: PartyOption[];
+  totalLoaded: number;
+  length: number;
+};
+
+type DailyProgress = {
+  date: string;
+  index: number;
+  correct: number;
+  total: number;
+  streak: number;
+  complete: boolean;
+  recent: RecentGuess[];
+};
+
 type GuessResponse = {
   correct: boolean;
   politician: Politician;
 };
 
+type GameMode = "practice" | "daily";
+
 const BEST_KEY = "gtp-ro-best";
 const RECENT_KEY = "gtp-ro-recent";
+const DAILY_PROGRESS_KEY = "gtp-ro-daily-progress";
 const RESULT_REVEAL_MS = 2800;
 
 const SCOPE_OPTIONS: Array<{ key: string; labelKey: "all" | "senat" | "camera" | "guvern" | "meps"; apiValue: string; scope: PoliticianScope; loadedLabelKey: "candidatesLoaded" | "senatorsLoaded" | "deputiesLoaded" | "governmentMembersLoaded" | "europeanParliamentMembersLoaded" }> = [
@@ -77,6 +98,48 @@ function writeRecentGuesses(items: RecentGuess[]) {
   window.localStorage.setItem(RECENT_KEY, JSON.stringify(items.slice(0, 10)));
 }
 
+function isDailyProgress(value: unknown): value is DailyProgress {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.date === "string" &&
+    typeof item.index === "number" &&
+    typeof item.correct === "number" &&
+    typeof item.total === "number" &&
+    typeof item.streak === "number" &&
+    typeof item.complete === "boolean" &&
+    Array.isArray(item.recent) &&
+    item.recent.every(isRecentGuess)
+  );
+}
+
+function readDailyProgress(date: string, length: number): DailyProgress | null {
+  try {
+    const stored = window.localStorage.getItem(DAILY_PROGRESS_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as unknown;
+    if (!isDailyProgress(parsed) || parsed.date !== date) return null;
+    const index = Math.min(Math.max(0, parsed.index), length);
+    const total = Math.min(Math.max(0, parsed.total), length);
+    const correct = Math.min(Math.max(0, parsed.correct), total);
+    return {
+      date,
+      index,
+      correct,
+      total,
+      streak: Math.max(0, parsed.streak),
+      complete: parsed.complete || index >= length,
+      recent: parsed.recent.slice(0, 10)
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeDailyProgress(progress: DailyProgress) {
+  window.localStorage.setItem(DAILY_PROGRESS_KEY, JSON.stringify({ ...progress, recent: progress.recent.slice(0, 10) }));
+}
+
 export function Game() {
   const language = useLanguage();
   const t = TRANSLATIONS[language];
@@ -92,6 +155,12 @@ export function Game() {
   const [error, setError] = useState<string | null>(null);
   const [totalLoaded, setTotalLoaded] = useState(0);
   const [scopeKey, setScopeKey] = useState("all");
+  const [gameMode, setGameMode] = useState<GameMode>("practice");
+  const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeResponse | null>(null);
+  const [dailyIndex, setDailyIndex] = useState(0);
+  const [dailyComplete, setDailyComplete] = useState(false);
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const [shareText, setShareText] = useState("");
   const [lastGuess, setLastGuess] = useState<PartyOption | null>(null);
   const revealTimeoutRef = useRef<number | null>(null);
   const nextPayloadRef = useRef<Promise<RandomResponse> | null>(null);
@@ -99,9 +168,14 @@ export function Game() {
   const localizedParties = useMemo(() => parties.map((party) => ({ ...party, label: partyDisplayLabel(party, language) })), [language, parties]);
   const partyByKey = useMemo(() => new Map(localizedParties.map((party) => [party.key, party])), [localizedParties]);
   const visibleParties = localizedParties;
-  const actualPartyLabel = answer ? partyByKey.get(answer.politician.party_key)?.label ?? answer.politician.party_label : "";
+  const actualPartyKey = answer?.politician.party_key ?? "";
+  const actualPartyLabel = answer ? partyByKey.get(actualPartyKey)?.label ?? answer.politician.party_label : "";
   const activeScope = SCOPE_OPTIONS.find((option) => option.key === scopeKey) ?? SCOPE_OPTIONS[0];
   const portraitSrc = politician ? photoSrc(politician.photo_url) : null;
+  const isDailyMode = gameMode === "daily";
+  const dailyTotal = dailyChallenge?.length ?? 10;
+  const dailyAnswered = Math.min(score.total, dailyTotal);
+  const showDailyComplete = isDailyMode && dailyComplete;
 
   const clearRevealTimers = useCallback(() => {
     if (revealTimeoutRef.current) window.clearTimeout(revealTimeoutRef.current);
@@ -117,13 +191,45 @@ export function Game() {
     return payload;
   }, [activeScope]);
 
+  const fetchDailyPayload = useCallback(async () => {
+    const response = await fetch("/api/challenge/daily", { cache: "no-store" });
+    if (!response.ok) throw new Error("Could not load the daily challenge.");
+    const payload = (await response.json()) as DailyChallengeResponse;
+    const firstPolitician = payload.politicians[0];
+    if (firstPolitician) {
+      await preloadPhoto(photoSrc(firstPolitician.photo_url));
+      await preloadPhoto(thumbnailSrc(firstPolitician.photo_url), 1200);
+    }
+    return payload;
+  }, []);
+
   const showPayload = useCallback((payload: RandomResponse) => {
     setParties(payload.parties);
     setTotalLoaded(payload.totalLoaded);
     setPolitician(payload.politician);
   }, []);
 
-  const loadNext = useCallback(async () => {
+  const showDailyPayload = useCallback((payload: DailyChallengeResponse, index: number) => {
+    const progress = readDailyProgress(payload.date, payload.length);
+    const restoredIndex = progress?.index ?? index;
+    const nextPolitician = payload.politicians[restoredIndex];
+    setDailyChallenge(payload);
+    setDailyIndex(restoredIndex);
+    setDailyComplete(Boolean(progress?.complete) || !nextPolitician);
+    setScore({ correct: progress?.correct ?? 0, total: progress?.total ?? 0 });
+    setStreak(progress?.streak ?? 0);
+    setRecent(progress?.recent ?? []);
+    setParties(payload.parties);
+    setTotalLoaded(payload.totalLoaded);
+    setShareStatus("idle");
+    setShareText("");
+    setPolitician(nextPolitician ?? null);
+    if (nextPolitician) {
+      void preloadPhoto(thumbnailSrc(nextPolitician.photo_url), 1200);
+    }
+  }, []);
+
+  const prepareRound = useCallback(() => {
     clearRevealTimers();
     setLoading(true);
     setAnswer(null);
@@ -131,7 +237,12 @@ export function Game() {
     setError(null);
     setPolitician(null);
     setPhotoStatus("idle");
+    setShareStatus("idle");
+    setShareText("");
+  }, [clearRevealTimers]);
 
+  const loadPracticeRound = useCallback(async () => {
+    prepareRound();
     try {
       const pendingPayload = nextPayloadRef.current;
       nextPayloadRef.current = null;
@@ -142,14 +253,39 @@ export function Game() {
     } finally {
       setLoading(false);
     }
-  }, [activeScope, clearRevealTimers, fetchRandomPayload, showPayload]);
+  }, [activeScope, fetchRandomPayload, prepareRound, showPayload]);
+
+  const loadDailyRound = useCallback(async (index = 0, challenge?: DailyChallengeResponse | null) => {
+    prepareRound();
+    try {
+      const payload = challenge ?? await fetchDailyPayload();
+      showDailyPayload(payload, index);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchDailyPayload, prepareRound, showDailyPayload]);
+
+  const loadNext = useCallback(async () => {
+    if (gameMode === "daily") {
+      await loadDailyRound(dailyIndex, dailyChallenge);
+      return;
+    }
+
+    await loadPracticeRound();
+  }, [dailyChallenge, dailyIndex, gameMode, loadDailyRound, loadPracticeRound]);
 
   useEffect(() => {
     setBest(Number(window.localStorage.getItem(BEST_KEY) ?? "0"));
     setRecent(readRecentGuesses());
-    void loadNext();
+    if (gameMode === "daily") {
+      void loadDailyRound(0);
+    } else {
+      void loadPracticeRound();
+    }
     return clearRevealTimers;
-  }, [clearRevealTimers, loadNext]);
+  }, [activeScope, clearRevealTimers, gameMode, loadDailyRound, loadPracticeRound]);
 
   async function submitGuess(party: PartyOption) {
     if (!politician || answer || loading) return;
@@ -171,34 +307,63 @@ export function Game() {
       const payload = (await response.json()) as GuessResponse;
       const nextStreak = payload.correct ? nextStreakIfCorrect : 0;
       const nextBest = Math.max(best, nextStreak);
+      const nextScore = {
+        correct: score.correct + (payload.correct ? 1 : 0),
+        total: score.total + 1
+      };
+      const nextRecent = [
+        {
+          id: crypto.randomUUID(),
+          name: payload.politician.name,
+          guessedPartyKey: party.key,
+          guessedParty: party.label,
+          actualPartyKey: payload.politician.party_key,
+          actualParty: partyByKey.get(payload.politician.party_key)?.label ?? payload.politician.party_label,
+          correct: payload.correct,
+          photoUrl: payload.politician.photo_url
+        },
+        ...recent
+      ].slice(0, 10);
 
       setAnswer(payload);
       setLastGuess(party);
-      setScore((current) => ({
-        correct: current.correct + (payload.correct ? 1 : 0),
-        total: current.total + 1
-      }));
+      setScore(nextScore);
       setStreak(nextStreak);
       setBest(nextBest);
       window.localStorage.setItem(BEST_KEY, String(nextBest));
-      setRecent((items) => {
-        const nextItems = [
-          {
-            id: crypto.randomUUID(),
-            name: payload.politician.name,
-            guessedPartyKey: party.key,
-            guessedParty: party.label,
-            actualPartyKey: payload.politician.party_key,
-            actualParty: partyByKey.get(payload.politician.party_key)?.label ?? payload.politician.party_label,
-            correct: payload.correct,
-            photoUrl: payload.politician.photo_url
-          },
-          ...items
-        ].slice(0, 10);
-        writeRecentGuesses(nextItems);
-        return nextItems;
-      });
+      setRecent(nextRecent);
+      writeRecentGuesses(nextRecent);
       clearRevealTimers();
+      if (isDailyMode && dailyChallenge) {
+        const nextIndex = dailyIndex + 1;
+        const complete = nextIndex >= dailyChallenge.length;
+        const nextDailyPolitician = dailyChallenge.politicians[nextIndex];
+        writeDailyProgress({
+          date: dailyChallenge.date,
+          index: nextIndex,
+          correct: nextScore.correct,
+          total: nextScore.total,
+          streak: nextStreak,
+          complete,
+          recent: nextRecent
+        });
+        if (nextDailyPolitician) {
+          void preloadPhoto(photoSrc(nextDailyPolitician.photo_url));
+          void preloadPhoto(thumbnailSrc(nextDailyPolitician.photo_url), 1200);
+        }
+        revealTimeoutRef.current = window.setTimeout(() => {
+          if (complete) {
+            setDailyIndex(nextIndex);
+            setDailyComplete(true);
+            setShareStatus("idle");
+            setShareText("");
+            return;
+          }
+          void loadDailyRound(nextIndex, dailyChallenge);
+        }, RESULT_REVEAL_MS);
+        return;
+      }
+
       const preloadedPayload = fetchRandomPayload(activeScope);
       preloadedPayload.catch(() => undefined);
       nextPayloadRef.current = preloadedPayload;
@@ -210,17 +375,70 @@ export function Game() {
     }
   }
 
-  function reset() {
+  function switchMode(nextMode: GameMode) {
+    if (nextMode === gameMode) return;
     clearRevealTimers();
+    nextPayloadRef.current = null;
+    setGameMode(nextMode);
     setScore({ correct: 0, total: 0 });
     setStreak(0);
-    setBest(0);
+    setAnswer(null);
+    setLastGuess(null);
+    setDailyChallenge(null);
+    setDailyIndex(0);
+    setDailyComplete(false);
+    setShareStatus("idle");
+    setShareText("");
+  }
+
+  async function shareDailyResult() {
+    if (!dailyChallenge) return;
+
+    const text = `${t.dailyChallenge} ${dailyChallenge.date}: ${score.correct}/${dailyTotal} · ${t.streak} ${streak}`;
+    const url = window.location.origin;
+    const resultText = `${text}\n${url}`;
+    setShareText(resultText);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: t.dailyChallenge, text, url });
+        setShareStatus("copied");
+        return;
+      }
+    } catch {
+      // Fall back to copying below; native share can fail or be cancelled.
+    }
+
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(resultText);
+        setShareStatus("copied");
+        return;
+      }
+    } catch {
+      // Use the visible manual fallback below.
+    }
+    setShareStatus("failed");
+  }
+
+  function reset() {
+    if (gameMode === "daily") return;
+
+    clearRevealTimers();
+    nextPayloadRef.current = null;
+    setScore({ correct: 0, total: 0 });
+    setStreak(0);
     setRecent([]);
     setAnswer(null);
     setLastGuess(null);
-    window.localStorage.setItem(BEST_KEY, "0");
+    setDailyChallenge(null);
+    setDailyIndex(0);
+    setDailyComplete(false);
+    setShareStatus("idle");
+    setShareText("");
     window.localStorage.removeItem(RECENT_KEY);
-    void loadNext();
+    setBest(0);
+    window.localStorage.setItem(BEST_KEY, "0");
+    void loadPracticeRound();
   }
 
   return (
@@ -245,7 +463,15 @@ export function Game() {
             <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-400">{t.best}</div>
             <div className="text-[19px] font-black leading-[0.9]">{best}</div>
           </div>
-          <button className="focus-ring rounded-[6px] border border-slate-200 bg-white px-[10px] py-[7px] text-[11px] font-bold text-slate-500 shadow-sm" onClick={reset} type="button">
+          <button
+            className={clsx(
+              "focus-ring rounded-[6px] border border-slate-200 bg-white px-[10px] py-[7px] text-[11px] font-bold text-slate-500 shadow-sm",
+              isDailyMode ? "cursor-not-allowed opacity-45" : ""
+            )}
+            disabled={isDailyMode}
+            onClick={reset}
+            type="button"
+          >
             {t.reset}
           </button>
           <LanguageToggle />
@@ -254,101 +480,165 @@ export function Game() {
       </header>
 
       <section className="mx-auto mt-6 flex w-[390px] max-w-[calc(100vw-24px)] flex-col items-center">
-        <div className="mb-[10px] grid w-full grid-cols-5 gap-[5px] rounded-[10px] border border-[#e4e6ee] bg-white p-[5px] shadow-sm">
-          {SCOPE_OPTIONS.map((option) => (
+        <div className="mb-[8px] grid w-full grid-cols-2 gap-[5px] rounded-[10px] border border-[#e4e6ee] bg-white p-[5px] shadow-sm">
+          {(["practice", "daily"] as GameMode[]).map((mode) => (
             <button
               className={clsx(
-                "focus-ring h-[28px] rounded-[7px] px-1.5 text-[10px] font-black transition",
-                scopeKey === option.key ? "bg-black text-white shadow-sm" : "bg-[#f7f8fb] text-slate-500 hover:bg-slate-100"
+                "focus-ring h-[28px] rounded-[7px] px-2 text-[10px] font-black transition",
+                gameMode === mode ? "bg-black text-white shadow-sm" : "bg-[#f7f8fb] text-slate-500 hover:bg-slate-100"
               )}
-              disabled={loading && scopeKey === option.key}
-              key={option.key}
-              onClick={() => setScopeKey(option.key)}
+              disabled={loading && gameMode === mode}
+              key={mode}
+              onClick={() => switchMode(mode)}
               type="button"
             >
-              {t[option.labelKey]}
+              {mode === "practice" ? t.practice : t.daily}
             </button>
           ))}
         </div>
 
+        {isDailyMode ? (
+          <div className="mb-[10px] flex h-[40px] w-full items-center justify-between rounded-[10px] border border-[#e4e6ee] bg-white px-[12px] text-[11px] font-black text-slate-600 shadow-sm">
+            <span data-testid="daily-progress-label">{t.dailyChallenge} · {dailyAnswered} / {dailyTotal}</span>
+          </div>
+        ) : (
+          <div className="mb-[10px] grid w-full grid-cols-5 gap-[5px] rounded-[10px] border border-[#e4e6ee] bg-white p-[5px] shadow-sm">
+            {SCOPE_OPTIONS.map((option) => (
+              <button
+                className={clsx(
+                  "focus-ring h-[28px] rounded-[7px] px-1.5 text-[10px] font-black transition",
+                  scopeKey === option.key ? "bg-black text-white shadow-sm" : "bg-[#f7f8fb] text-slate-500 hover:bg-slate-100"
+                )}
+                disabled={loading && scopeKey === option.key}
+                key={option.key}
+                onClick={() => setScopeKey(option.key)}
+                type="button"
+              >
+                {t[option.labelKey]}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="w-full overflow-hidden rounded-[12px] bg-white shadow-[0_16px_38px_rgba(34,39,52,0.15)]">
-          <div className="relative aspect-square w-full bg-slate-200">
-            {loading || (!error && politician && photoStatus === "idle") ? (
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200 via-slate-100 to-slate-300" aria-label="Loading photo" />
-            ) : null}
-            {error ? <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm font-bold text-red-700">{error}</div> : null}
-            {!loading && !error && politician && photoStatus !== "failed" && portraitSrc ? (
-              <img
-                alt="Romanian politician portrait"
-                className={clsx("h-full w-full object-cover transition-opacity duration-150", photoStatus === "loaded" ? "opacity-100" : "opacity-0")}
-                key={politician.id}
-                onError={() => setPhotoStatus("failed")}
-                onLoad={() => setPhotoStatus("loaded")}
-                src={portraitSrc}
-              />
-            ) : null}
-            {!loading && !error && politician && photoStatus === "failed" ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-slate-200 text-sm font-bold text-slate-500">
-                Photo unavailable
+          {showDailyComplete ? (
+            <div className="px-5 py-8 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-[24px] font-black text-emerald-700">
+                {score.correct}
               </div>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-[7px] p-[10px]">
-            {visibleParties.length === 0 ? (
-              <div className="h-[28px] w-24 animate-pulse rounded-[6px] bg-slate-200" />
-            ) : (
-              visibleParties.map((party) => {
-                const isActual = answer?.politician.party_key === party.key;
-                const isDisabled = Boolean(answer) || loading || !politician || photoStatus !== "loaded";
-                return (
-                  <button
-                    className={clsx(
-                      "focus-ring h-[30px] min-w-[48px] rounded-[6px] px-[10px] text-[11px] font-black text-white shadow-sm transition",
-                      isDisabled ? "cursor-default opacity-75" : "hover:brightness-95",
-                      answer && !isActual ? "grayscale" : ""
-                    )}
-                    key={party.key}
-                    onClick={() => submitGuess(party)}
-                    disabled={isDisabled}
-                    style={{ backgroundColor: party.color, color: party.textColor ?? "#ffffff" }}
-                    type="button"
-                  >
-                    {party.label}
-                  </button>
-                );
-              })
-            )}
-          </div>
-
-          {answer && lastGuess ? (
-            <div className="border-t border-slate-100 px-4 pb-4 pt-3 text-center">
-              <div className={clsx("mx-auto mb-2 inline-flex h-[22px] items-center rounded-full px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white", answer.correct ? "bg-emerald-500" : "bg-red-500")}>
-                {answer.correct ? t.correct : t.wrong}
+              <h2 className="text-[22px] font-black leading-tight text-slate-950">{t.dailyComplete}</h2>
+              <p className="mt-2 text-[13px] font-bold leading-relaxed text-slate-500">{t.dailyResultSummary}</p>
+              <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-[8px] bg-slate-50 px-2 py-3">
+                  <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">{t.score}</div>
+                  <div className="mt-1 text-[18px] font-black text-slate-950" data-testid="daily-summary-score">{score.correct} / {dailyTotal}</div>
+                </div>
+                <div className="rounded-[8px] bg-slate-50 px-2 py-3">
+                  <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">{t.streak}</div>
+                  <div className="mt-1 text-[18px] font-black text-slate-950">{streak}</div>
+                </div>
+                <div className="rounded-[8px] bg-slate-50 px-2 py-3">
+                  <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">{t.best}</div>
+                  <div className="mt-1 text-[18px] font-black text-slate-950">{best}</div>
+                </div>
               </div>
-              <div className="mx-auto mb-3 h-[5px] w-full overflow-hidden rounded-full bg-slate-100">
-                <div
-                  key={`${answer.politician.id}-${lastGuess.key}`}
-                  className={clsx("reveal-progress h-full w-full rounded-full", answer.correct ? "bg-emerald-500" : "bg-red-500")}
-                  style={{
-                    animationDuration: `${RESULT_REVEAL_MS}ms`
-                  }}
-                />
-              </div>
-              <p className="text-[16px] font-black leading-tight text-slate-950">{answer.politician.name}</p>
-              <p className="mt-1 text-[11px] font-bold leading-snug text-slate-500">
-                {chamberLabel(answer.politician.chamber, language)}
-                {answer.politician.constituency ? ` · ${answer.politician.constituency}` : ""}
-              </p>
-              <p className="mt-2 text-[12px] font-bold text-slate-600">
-                {actualPartyLabel} · {t.youGuessed} {lastGuess.label}
-              </p>
+              <button className="focus-ring mt-5 h-[36px] rounded-[7px] bg-black px-4 text-[12px] font-black text-white" onClick={shareDailyResult} type="button">
+                {shareStatus === "copied" ? t.copied : t.shareResult}
+              </button>
+              {shareStatus === "failed" && shareText ? (
+                <div className="mt-4 text-left">
+                  <p className="mb-2 text-[11px] font-bold text-slate-500">{t.shareUnavailable}</p>
+                  <textarea
+                    className="h-[74px] w-full resize-none rounded-[8px] border border-slate-200 bg-slate-50 p-3 text-[11px] font-bold leading-relaxed text-slate-700"
+                    readOnly
+                    value={shareText}
+                  />
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          ) : (
+            <>
+              <div className="relative aspect-square w-full bg-slate-200">
+                {loading || (!error && politician && photoStatus === "idle") ? (
+                  <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200 via-slate-100 to-slate-300" aria-label="Loading photo" />
+                ) : null}
+                {error ? <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm font-bold text-red-700">{error}</div> : null}
+                {!loading && !error && politician && photoStatus !== "failed" && portraitSrc ? (
+                  <img
+                    alt="Romanian politician portrait"
+                    className={clsx("h-full w-full object-cover transition-opacity duration-150", photoStatus === "loaded" ? "opacity-100" : "opacity-0")}
+                    key={politician.id}
+                    onError={() => setPhotoStatus("failed")}
+                    onLoad={() => setPhotoStatus("loaded")}
+                    src={portraitSrc}
+                  />
+                ) : null}
+                {!loading && !error && politician && photoStatus === "failed" ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-200 text-sm font-bold text-slate-500">
+                    Photo unavailable
+                  </div>
+                ) : null}
+              </div>
+
+              <div aria-label={t.partyChoices} className="flex flex-wrap justify-center gap-[7px] p-[10px]" role="group">
+                {visibleParties.length === 0 ? (
+                  <div className="h-[28px] w-24 animate-pulse rounded-[6px] bg-slate-200" />
+                ) : (
+                  visibleParties.map((party) => {
+                    const isActual = answer ? actualPartyKey === party.key : false;
+                    const isDisabled = Boolean(answer) || loading || !politician || photoStatus !== "loaded";
+                    return (
+                      <button
+                        className={clsx(
+                          "focus-ring h-[30px] min-w-[48px] rounded-[6px] px-[10px] text-[11px] font-black text-white shadow-sm transition",
+                          isDisabled ? "cursor-default opacity-75" : "hover:brightness-95",
+                          answer && !isActual ? "grayscale" : ""
+                        )}
+                        key={party.key}
+                        onClick={() => submitGuess(party)}
+                        disabled={isDisabled}
+                        style={{ backgroundColor: party.color, color: party.textColor ?? "#ffffff" }}
+                        type="button"
+                      >
+                        {party.label}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {answer && lastGuess ? (
+                <div className="border-t border-slate-100 px-4 pb-4 pt-3 text-center">
+                  <div className={clsx("mx-auto mb-2 inline-flex h-[22px] items-center rounded-full px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white", answer.correct ? "bg-emerald-500" : "bg-red-500")}>
+                    {answer.correct ? t.correct : t.wrong}
+                  </div>
+                  <div className="mx-auto mb-3 h-[5px] w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      key={`${answer.politician.id}-${lastGuess.key}`}
+                      className={clsx("reveal-progress h-full w-full rounded-full", answer.correct ? "bg-emerald-500" : "bg-red-500")}
+                      style={{
+                        animationDuration: `${RESULT_REVEAL_MS}ms`
+                      }}
+                    />
+                  </div>
+                  <p className="text-[16px] font-black leading-tight text-slate-950">{answer.politician.name}</p>
+                  <p className="mt-1 text-[11px] font-bold leading-snug text-slate-500">
+                    {chamberLabel(answer.politician.chamber, language)}
+                    {answer.politician.constituency ? ` · ${answer.politician.constituency}` : ""}
+                  </p>
+                  <p className="mt-2 text-[12px] font-bold text-slate-600">
+                    {actualPartyLabel} · {t.youGuessed} {lastGuess.label}
+                  </p>
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
 
-        <p className="mt-[15px] text-center text-[11px] font-semibold text-slate-500">
-          {totalLoaded > 0 ? `${totalLoaded} ${t[activeScope.loadedLabelKey]}` : t[activeScope.loadedLabelKey]}
+        <p className="mt-[15px] text-center text-[11px] font-semibold text-slate-500" data-testid={isDailyMode ? "daily-footer-label" : undefined}>
+          {isDailyMode
+            ? `${dailyComplete ? t.dailyComplete : t.dailyChallenge} · ${dailyAnswered} / ${dailyTotal}`
+            : totalLoaded > 0 ? `${totalLoaded} ${t[activeScope.loadedLabelKey]}` : t[activeScope.loadedLabelKey]}
         </p>
       </section>
 

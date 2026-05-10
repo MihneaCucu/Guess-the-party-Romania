@@ -61,6 +61,14 @@ export type RandomPoliticianResult = {
   scope: PoliticianScope;
 };
 
+export type DailyChallengeResult = {
+  date: string;
+  politicians: PublicPolitician[];
+  parties: PartyOption[];
+  totalLoaded: number;
+  length: number;
+};
+
 export type PartyAccuracy = {
   party: PartyKey;
   label: string;
