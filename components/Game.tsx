@@ -1,8 +1,9 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import NextImage from "next/image";
 import clsx from "clsx";
 import { LanguageToggle, useLanguage } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -32,6 +33,7 @@ type GuessResponse = {
 };
 
 const BEST_KEY = "gtp-ro-best";
+const RECENT_KEY = "gtp-ro-recent";
 const PRIMARY_PHOTO_TIMEOUT_MS = 4500;
 const FALLBACK_PHOTO_TIMEOUT_MS = 4500;
 const RESULT_REVEAL_MS = 2800;
@@ -43,20 +45,37 @@ const SCOPE_OPTIONS: Array<{ key: string; labelKey: "all" | "senat" | "camera" |
   { key: "guvern", labelKey: "guvern", apiValue: "guvern", scope: "Guvern", loadedLabelKey: "governmentMembersLoaded" }
 ];
 
-const SAMPLE_RECENT_GUESSES: RecentGuess[] = [
-  { id: "sample-andrei-popescu", name: "Andrei Popescu", actualParty: "PSD", guessedParty: "USR", correct: false, photoUrl: "" },
-  { id: "sample-mihai-ionescu", name: "Mihai Ionescu", actualParty: "PNL", guessedParty: "AUR", correct: false, photoUrl: "" },
-  { id: "sample-elena-dumitrescu", name: "Elena Dumitrescu", actualParty: "USR", guessedParty: "PNL", correct: false, photoUrl: "" },
-  { id: "sample-radu-stan", name: "Radu Stan", actualParty: "AUR", guessedParty: "PSD", correct: false, photoUrl: "" },
-  { id: "sample-ioana-marin", name: "Ioana Marin", actualParty: "UDMR", guessedParty: "USR", correct: false, photoUrl: "" },
-  { id: "sample-vlad-georgescu", name: "Vlad Georgescu", actualParty: "PNL", guessedParty: "PSD", correct: false, photoUrl: "" },
-  { id: "sample-cristina-pavel", name: "Cristina Pavel", actualParty: "PSD", guessedParty: "AUR", correct: false, photoUrl: "" },
-  { id: "sample-alexandru-dobre", name: "Alexandru Dobre", actualParty: "USR", guessedParty: "PNL", correct: false, photoUrl: "" }
-];
-
 function photoSrc(url: string): string {
   if (url.startsWith("/")) return url;
   return `/api/photo?url=${encodeURIComponent(url)}`;
+}
+
+function isRecentGuess(value: unknown): value is RecentGuess {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.id === "string" &&
+    typeof item.name === "string" &&
+    typeof item.guessedParty === "string" &&
+    typeof item.actualParty === "string" &&
+    typeof item.correct === "boolean" &&
+    typeof item.photoUrl === "string"
+  );
+}
+
+function readRecentGuesses(): RecentGuess[] {
+  try {
+    const stored = window.localStorage.getItem(RECENT_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as unknown;
+    return Array.isArray(parsed) ? parsed.filter(isRecentGuess).slice(0, 10) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRecentGuesses(items: RecentGuess[]) {
+  window.localStorage.setItem(RECENT_KEY, JSON.stringify(items.slice(0, 10)));
 }
 
 export function Game() {
@@ -80,7 +99,6 @@ export function Game() {
 
   const partyByKey = useMemo(() => new Map(parties.map((party) => [party.key, party])), [parties]);
   const visibleParties = parties;
-  const displayedRecent = recent.length > 0 ? recent : SAMPLE_RECENT_GUESSES;
   const actualPartyLabel = answer ? partyByKey.get(answer.politician.party_key)?.label ?? answer.politician.party_label : "";
   const activeScope = SCOPE_OPTIONS.find((option) => option.key === scopeKey) ?? SCOPE_OPTIONS[0];
   const portraitSrc = politician
@@ -134,6 +152,7 @@ export function Game() {
 
   useEffect(() => {
     setBest(Number(window.localStorage.getItem(BEST_KEY) ?? "0"));
+    setRecent(readRecentGuesses());
     void loadNext();
     return clearRevealTimers;
   }, [clearRevealTimers, loadNext]);
@@ -168,17 +187,21 @@ export function Game() {
       setStreak(nextStreak);
       setBest(nextBest);
       window.localStorage.setItem(BEST_KEY, String(nextBest));
-      setRecent((items) => [
-        {
-          id: crypto.randomUUID(),
-          name: payload.politician.name,
-          guessedParty: party.label,
-          actualParty: partyByKey.get(payload.politician.party_key)?.label ?? payload.politician.party_label,
-          correct: payload.correct,
-          photoUrl: payload.politician.photo_url
-        },
-        ...items
-      ].slice(0, 10));
+      setRecent((items) => {
+        const nextItems = [
+          {
+            id: crypto.randomUUID(),
+            name: payload.politician.name,
+            guessedParty: party.label,
+            actualParty: partyByKey.get(payload.politician.party_key)?.label ?? payload.politician.party_label,
+            correct: payload.correct,
+            photoUrl: payload.politician.photo_url
+          },
+          ...items
+        ].slice(0, 10);
+        writeRecentGuesses(nextItems);
+        return nextItems;
+      });
       clearRevealTimers();
       revealTimeoutRef.current = window.setTimeout(() => {
         void loadNext();
@@ -197,6 +220,7 @@ export function Game() {
     setAnswer(null);
     setLastGuess(null);
     window.localStorage.setItem(BEST_KEY, "0");
+    window.localStorage.removeItem(RECENT_KEY);
     void loadNext();
   }
 
@@ -255,10 +279,9 @@ export function Game() {
             ) : null}
             {error ? <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm font-bold text-red-700">{error}</div> : null}
             {!loading && !error && politician && photoStatus !== "failed" && portraitSrc ? (
-              <NextImage
+              <img
                 alt="Romanian politician portrait"
                 className={clsx("h-full w-full object-cover transition-opacity duration-150", photoStatus === "loaded" ? "opacity-100" : "opacity-0")}
-                height={640}
                 key={`${politician.id}-${photoMode}`}
                 onError={() => {
                   if (photoMode === "proxy") {
@@ -268,11 +291,7 @@ export function Game() {
                   }
                 }}
                 onLoad={() => setPhotoStatus("loaded")}
-                priority
-                sizes="(max-width: 640px) calc(100vw - 24px), 390px"
-                unoptimized={photoMode === "proxy"}
                 src={portraitSrc}
-                width={640}
               />
             ) : null}
             {!loading && !error && politician && photoStatus === "failed" ? (
@@ -342,34 +361,28 @@ export function Game() {
 
       <section className="mx-auto mt-[32px] w-[390px] max-w-[calc(100vw-24px)] pb-8">
         <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{t.recentGuesses}</h2>
-        <ol className="mt-[10px] space-y-[7px]">
-          {displayedRecent.map((guess, index) => (
-            <li className="flex h-[52px] items-center gap-[9px] rounded-[9px] border border-slate-100 bg-white px-[9px] shadow-sm" key={guess.id}>
-              {guess.photoUrl ? (
-                <NextImage alt="" className="h-[32px] w-[32px] rounded-[5px] object-cover" height={64} src={guess.photoUrl} unoptimized width={64} />
-              ) : (
-                <span
-                  className={clsx(
-                    "h-[32px] w-[32px] rounded-[5px]",
-                    index % 4 === 0 && "bg-gradient-to-br from-slate-500 to-slate-300",
-                    index % 4 === 1 && "bg-gradient-to-br from-amber-400 to-slate-300",
-                    index % 4 === 2 && "bg-gradient-to-br from-sky-500 to-slate-200",
-                    index % 4 === 3 && "bg-gradient-to-br from-emerald-500 to-slate-300"
-                  )}
-                />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[12px] font-black leading-[1.2] text-slate-900">{guess.name}</p>
-                <p className="truncate text-[10px] font-semibold leading-[1.4] text-slate-500">
-                  {guess.actualParty} · {t.youGuessed} {guess.guessedParty}
-                </p>
-              </div>
-              <span className={clsx("flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full text-[13px] font-black leading-none text-white", guess.correct ? "bg-emerald-500" : "bg-red-500")}>
-                {guess.correct ? "✓" : "×"}
-              </span>
-            </li>
-          ))}
-        </ol>
+        {recent.length === 0 ? (
+          <div className="mt-[10px] rounded-[9px] border border-slate-100 bg-white px-[12px] py-[14px] text-[11px] font-bold text-slate-500 shadow-sm">
+            {t.noGuessesYet}
+          </div>
+        ) : (
+          <ol className="mt-[10px] space-y-[7px]">
+            {recent.map((guess) => (
+              <li className="flex h-[52px] items-center gap-[9px] rounded-[9px] border border-slate-100 bg-white px-[9px] shadow-sm" key={guess.id}>
+                <img alt="" className="h-[32px] w-[32px] rounded-[5px] bg-slate-200 object-cover" src={photoSrc(guess.photoUrl)} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12px] font-black leading-[1.2] text-slate-900">{guess.name}</p>
+                  <p className="truncate text-[10px] font-semibold leading-[1.4] text-slate-500">
+                    {guess.actualParty} · {t.youGuessed} {guess.guessedParty}
+                  </p>
+                </div>
+                <span className={clsx("flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full text-[13px] font-black leading-none text-white", guess.correct ? "bg-emerald-500" : "bg-red-500")}>
+                  {guess.correct ? "✓" : "×"}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
       </section>
     </main>
   );
