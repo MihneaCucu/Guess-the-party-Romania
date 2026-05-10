@@ -1,10 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { dailyChallengeDateKey, selectDailyPoliticians } from "@/lib/daily";
 import { getPartyOptions } from "@/lib/parties";
 import { MOCK_POLITICIANS } from "@/lib/mock-data";
 import { formatPersonName } from "@/lib/names";
 import { filterPoliticiansByScope, playablePoliticians, selectUnseenPolitician } from "@/lib/shuffle";
 import { computeStats } from "@/lib/stats";
-import type { GuessRecord, GuessResult, PartyOption, Politician, PoliticianScope, PublicPolitician, RandomPoliticianResult, SessionRecord, StatsSummary } from "@/lib/types";
+import type { DailyChallengeResult, GuessRecord, GuessResult, PartyOption, Politician, PoliticianScope, PublicPolitician, RandomPoliticianResult, SessionRecord, StatsSummary } from "@/lib/types";
 
 let supabase: SupabaseClient | null | undefined;
 
@@ -175,6 +176,41 @@ export async function getRandomPublicPolitician(sessionId: string, scope: Politi
     totalLoaded: candidates.length,
     remainingInCycle: selected.remainingAfterPick,
     scope
+  };
+}
+
+export async function getDailyChallenge(date = dailyChallengeDateKey()): Promise<DailyChallengeResult> {
+  const db = getSupabase();
+
+  if (!db) {
+    const candidates = playablePoliticians(memory.politicians);
+    const politicians = selectDailyPoliticians(candidates, date).map(publicPolitician);
+    return {
+      date,
+      politicians,
+      parties: getPartyOptions(candidates.map((politician) => politician.party_key)),
+      totalLoaded: candidates.length,
+      length: politicians.length
+    };
+  }
+
+  const { data, error } = await db
+    .from("politicians")
+    .select("*")
+    .eq("active", true)
+    .eq("review_status", "approved")
+    .not("photo_url", "is", null);
+
+  if (error) throw error;
+  const candidates = playablePoliticians((data ?? []) as Politician[]);
+  const politicians = selectDailyPoliticians(candidates, date).map(publicPolitician);
+
+  return {
+    date,
+    politicians,
+    parties: getPartyOptions(candidates.map((politician) => politician.party_key)),
+    totalLoaded: candidates.length,
+    length: politicians.length
   };
 }
 
