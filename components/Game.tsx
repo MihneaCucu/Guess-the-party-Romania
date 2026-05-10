@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { LanguageToggle, useLanguage } from "@/components/LanguageToggle";
+import { SocialFooter } from "@/components/SocialFooter";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { chamberLabel, TRANSLATIONS } from "@/lib/i18n";
 import { partyDisplayLabel } from "@/lib/parties";
@@ -376,6 +377,7 @@ export function Game() {
           </ol>
         )}
       </section>
+      <SocialFooter />
     </main>
   );
 }
