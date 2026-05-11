@@ -1,0 +1,4 @@
+id,vote_id,target_party,target_stance,prompt_ro,prompt_en,active,review_status,interesting
+q-drone-defense-usr-against,cdep-2025-drone-defense,USR,against,Ghici ce partid a votat majoritar împotriva reglementărilor care permit intervenția armatei împotriva dronelor.,Guess which party mostly voted against the rules allowing military intervention against drones.,true,approved,true
+q-special-pensions-psd-for,cdep-2025-special-pensions,PSD,for,Ghici ce partid a votat majoritar pentru modificările privind pensiile speciale.,Guess which party mostly voted for the special pensions changes.,true,approved,true
+q-education-funding-aur-against,cdep-2025-education-funding,AUR,against,Ghici ce partid a votat majoritar împotriva finanțării programelor locale pentru reducerea abandonului școlar.,Guess which party mostly voted against funding local programs to reduce school dropout.,true,approved,true

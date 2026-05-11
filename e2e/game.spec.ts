@@ -18,6 +18,17 @@ test("plays a full guess flow", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Recent guesses" })).toBeVisible();
 });
 
+test("plays a legislative vote guess flow", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Votes" }).click();
+  await expect(page.getByTestId("vote-progress-label")).toHaveText("Legislative vote", { timeout: 15000 });
+  await expect(page.getByTestId("vote-question-prompt")).toBeVisible({ timeout: 15000 });
+  await page.getByRole("group", { name: "Party choices" }).getByRole("button").first().click();
+  await expect(page.getByText(/Correct|Wrong/)).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText("Official source")).toBeVisible();
+  await expect(page.getByText("Majority:")).toBeVisible();
+});
+
 test("starts the daily challenge", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Daily" }).click();
@@ -35,7 +46,7 @@ test("keeps daily progress after leaving and returning", async ({ page }) => {
   await expect(page.getByAltText("Romanian politician portrait")).toBeVisible({ timeout: 15000 });
   await page.getByRole("group", { name: "Party choices" }).getByRole("button").first().click();
   await expect(page.getByText(/· you guessed/)).toHaveCount(2);
-  await page.getByRole("button", { name: "Practice" }).click();
+  await page.getByRole("button", { name: "Politicians" }).click();
   await expect(page.getByText(/\d+ candidates loaded/)).toBeVisible({ timeout: 15000 });
   await page.getByRole("button", { name: "Daily" }).click();
   await expect(page.getByTestId("daily-progress-label")).toHaveText(/Daily challenge · 1 \/ 10/, { timeout: 15000 });

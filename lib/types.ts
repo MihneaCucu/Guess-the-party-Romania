@@ -1,4 +1,5 @@
 export type PartyKey = string;
+export type VoteStance = "for" | "against" | "abstain";
 
 export type PartyOption = {
   key: PartyKey;
@@ -67,6 +68,83 @@ export type DailyChallengeResult = {
   parties: PartyOption[];
   totalLoaded: number;
   length: number;
+};
+
+export type LegislativeVote = {
+  id: string;
+  source_vote_id: string;
+  voted_at: string;
+  bill_number: string;
+  title: string;
+  vote_type: string;
+  source_url: string;
+  total_for: number;
+  total_against: number;
+  total_abstain: number;
+  total_present: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LegislativePartyPosition = {
+  id: string;
+  vote_id: string;
+  party_key: PartyKey;
+  party_label: string;
+  stance: VoteStance;
+  vote_count: number;
+  party_present_count: number;
+  majority_share: number;
+};
+
+export type LegislativeQuestion = {
+  id: string;
+  vote_id: string;
+  target_party: PartyKey;
+  target_stance: VoteStance;
+  prompt_ro: string;
+  prompt_en?: string | null;
+  active: boolean;
+  review_status: ReviewStatus;
+  interesting: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicLegislativeVote = Omit<LegislativeVote, "created_at" | "updated_at">;
+
+export type PublicVoteQuestion = {
+  id: string;
+  prompt_ro: string;
+  prompt_en?: string | null;
+  vote: PublicLegislativeVote;
+};
+
+export type VoteQuestionResult = {
+  question: PublicVoteQuestion;
+  parties: PartyOption[];
+  totalLoaded: number;
+};
+
+export type VoteGuessResult = {
+  correct: boolean;
+  question: PublicVoteQuestion & {
+    target_party: PartyKey;
+    target_stance: VoteStance;
+    target_party_label: string;
+    target_majority_share: number;
+  };
+  positions: LegislativePartyPosition[];
+};
+
+export type VoteGuessRecord = {
+  id: string;
+  session_id: string;
+  question_id: string;
+  actual_party: PartyKey;
+  guessed_party: PartyKey;
+  correct: boolean;
+  created_at: string;
 };
 
 export type PartyAccuracy = {
