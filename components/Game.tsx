@@ -757,23 +757,21 @@ export function Game() {
             </div>
           ) : isVoteMode ? (
             <>
-              <div className="min-h-[300px] bg-slate-100 px-5 py-6">
+              <div className="relative aspect-square w-full bg-slate-200">
                 {loading ? (
-                  <div className="space-y-4">
-                    <div className="h-5 w-28 animate-pulse rounded bg-slate-200" />
-                    <div className="h-20 w-full animate-pulse rounded-[8px] bg-slate-200" />
-                    <div className="h-12 w-2/3 animate-pulse rounded-[8px] bg-slate-200" />
-                  </div>
+                  <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-200 via-slate-100 to-slate-300" aria-label="Loading vote question" />
                 ) : null}
-                {error ? <div className="flex min-h-[240px] items-center justify-center px-4 text-center text-sm font-bold text-red-700">{error}</div> : null}
+                {error ? <div className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm font-bold text-red-700">{error}</div> : null}
                 {!loading && !error && voteQuestion ? (
-                  <article>
-                    <div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">{t.voteQuestion}</div>
-                    <h2 className="mt-3 text-[24px] font-black leading-[1.05] text-slate-950" data-testid="vote-question-prompt">
-                      {votePrompt(voteQuestion, language)}
-                    </h2>
-                    <div className="mt-5 rounded-[9px] border border-slate-200 bg-white p-3">
-                      <p className="text-[12px] font-black leading-snug text-slate-900">{voteQuestion.vote.title}</p>
+                  <article className="absolute inset-0 flex flex-col justify-between p-5">
+                    <div>
+                      <div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">{t.voteQuestion}</div>
+                      <h2 className="mt-3 text-[24px] font-black leading-[1.05] text-slate-950" data-testid="vote-question-prompt">
+                        {votePrompt(voteQuestion, language)}
+                      </h2>
+                    </div>
+                    <div className="border-t border-slate-300 pt-3">
+                      <p className="line-clamp-3 text-[12px] font-black leading-snug text-slate-800">{voteQuestion.vote.title}</p>
                       <p className="mt-1 text-[10px] font-bold text-slate-500">
                         {legislativeSourceLabel(voteQuestion.vote.source_chamber)}
                         {voteQuestion.vote.bill_number ? ` · ${voteQuestion.vote.bill_number}` : ""}
