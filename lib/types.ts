@@ -1,5 +1,6 @@
 export type PartyKey = string;
 export type VoteStance = "for" | "against" | "abstain";
+export type LegislativeSourceChamber = "cdep" | "senate";
 
 export type PartyOption = {
   key: PartyKey;
@@ -72,6 +73,7 @@ export type DailyChallengeResult = {
 
 export type LegislativeVote = {
   id: string;
+  source_chamber: LegislativeSourceChamber;
   source_vote_id: string;
   voted_at: string;
   bill_number: string;

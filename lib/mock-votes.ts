@@ -5,6 +5,7 @@ const NOW = "2026-05-11T00:00:00.000Z";
 export const MOCK_LEGISLATIVE_VOTES: LegislativeVote[] = [
   {
     id: "cdep-2025-drone-defense",
+    source_chamber: "cdep",
     source_vote_id: "mock-22170",
     voted_at: "2025-02-26",
     bill_number: "PL-x 47/2025",
@@ -20,6 +21,7 @@ export const MOCK_LEGISLATIVE_VOTES: LegislativeVote[] = [
   },
   {
     id: "cdep-2025-special-pensions",
+    source_chamber: "cdep",
     source_vote_id: "mock-22331",
     voted_at: "2025-03-19",
     bill_number: "PL-x 92/2025",
@@ -35,6 +37,7 @@ export const MOCK_LEGISLATIVE_VOTES: LegislativeVote[] = [
   },
   {
     id: "cdep-2025-education-funding",
+    source_chamber: "cdep",
     source_vote_id: "mock-22402",
     voted_at: "2025-04-08",
     bill_number: "PL-x 118/2025",

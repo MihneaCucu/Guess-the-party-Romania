@@ -1,11 +1,11 @@
-import { parseCdepNominalVoteHtml, parseCdepVoteLinks } from "../lib/cdep-votes";
+import { parseSenateNominalVoteHtml, parseSenateVoteLinks } from "../lib/senate-votes";
 import { slugify } from "../lib/parties";
 import { computePartyPositions, eligibleQuestionTargets } from "../lib/votes";
 import type { LegislativePartyPosition, LegislativeVote } from "../lib/types";
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-const DEFAULT_INDEX_URL = "https://www.cdep.ro/ords/pls/steno/evot2015.data?idl=1";
+const DEFAULT_INDEX_URL = "https://www.senat.ro/voturiplen.aspx";
 
 function csvEscape(value: unknown): string {
   const text = String(value ?? "");
@@ -25,7 +25,7 @@ async function fetchText(url: string): Promise<string> {
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "GuessThePartyRO/0.1 CDEP vote import"
+        "User-Agent": "GuessThePartyRO/0.1 Senate vote import"
       },
       signal: controller.signal
     });
@@ -37,21 +37,22 @@ async function fetchText(url: string): Promise<string> {
 }
 
 function sourceVoteId(url: string): string {
-  return new URL(url).searchParams.get("idv") ?? slugify(url);
+  const parsed = new URL(url);
+  return parsed.searchParams.get("AppID") ?? slugify(url);
 }
 
-function voteFromParsed(url: string, parsed: ReturnType<typeof parseCdepNominalVoteHtml>): LegislativeVote {
-  const id = `cdep-${sourceVoteId(url)}`;
+function voteFromParsed(url: string, parsed: ReturnType<typeof parseSenateNominalVoteHtml>): LegislativeVote {
+  const id = `senate-${sourceVoteId(url).toLowerCase()}`;
   const totalFor = parsed.rows.filter((row) => row.stance === "for").length;
   const totalAgainst = parsed.rows.filter((row) => row.stance === "against").length;
   const totalAbstain = parsed.rows.filter((row) => row.stance === "abstain").length;
   return {
     id,
-    source_chamber: "cdep",
+    source_chamber: "senate",
     source_vote_id: sourceVoteId(url),
     voted_at: parsed.votedAt || new Date().toISOString().slice(0, 10),
     bill_number: parsed.billNumber,
-    title: parsed.title || parsed.billNumber || `CDEP vote ${sourceVoteId(url)}`,
+    title: parsed.title || parsed.billNumber || `Senate vote ${sourceVoteId(url)}`,
     vote_type: "vot electronic",
     source_url: url,
     total_for: parsed.totals.for || totalFor,
@@ -66,13 +67,13 @@ function voteFromParsed(url: string, parsed: ReturnType<typeof parseCdepNominalV
 async function main() {
   const indexUrl = process.argv[2] ?? DEFAULT_INDEX_URL;
   const html = await fetchText(indexUrl);
-  const links = parseCdepVoteLinks(html, indexUrl);
+  const links = parseSenateVoteLinks(html, indexUrl);
   const votes: LegislativeVote[] = [];
   const positions: LegislativePartyPosition[] = [];
   const questionCandidates: Record<string, unknown>[] = [];
 
   for (const link of links) {
-    const parsed = parseCdepNominalVoteHtml(await fetchText(link));
+    const parsed = parseSenateNominalVoteHtml(await fetchText(link));
     const vote = voteFromParsed(link, parsed);
     const votePositions = computePartyPositions(vote.id, parsed.rows);
     const targets = eligibleQuestionTargets(votePositions);

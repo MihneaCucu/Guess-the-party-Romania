@@ -17,7 +17,7 @@ The main game supports category filters for `All`, `Senate`, `Chamber`, `Governm
 
 The home screen also includes a deterministic Daily Challenge: 10 politicians selected from the Romania calendar day, with the same challenge served to every player for that day and a native share/copy result action at completion.
 
-The `Votes` mode asks players to identify the party that had a clear majority position on reviewed, interesting CDEP legislative votes from the 2024+ legislature. Vote questions are intentionally curated: only unambiguous cases with one correct party are served.
+The `Votes` mode asks players to identify the party that had a clear majority position on reviewed, interesting CDEP or Senate legislative votes from the 2024+ legislature. Vote questions are intentionally curated: only unambiguous cases with one correct party are served.
 
 ## Local Development
 
@@ -33,8 +33,9 @@ The app runs at `http://127.0.0.1:3007` without Supabase credentials by using an
 - `supabase/migrations/001_initial_schema.sql` defines the production tables.
 - `data/seed-politicians.csv` is a reviewed local seed. The local seed currently includes Senate, Chamber of Deputies, Government, and Romanian European Parliament records with cached local portraits.
 - `data/manual-review.csv` is the review format for source, image, duplicate, and logo/background checks.
-- `scripts/import-senate.ts`, `scripts/import-chamber.ts`, `scripts/import-government.ts`, `scripts/import-meps.ts`, and `scripts/import-cdep-votes.ts` are the import entrypoints.
+- `scripts/import-senate.ts`, `scripts/import-chamber.ts`, `scripts/import-government.ts`, `scripts/import-meps.ts`, `scripts/import-cdep-votes.ts`, and `scripts/import-senate-votes.ts` are the import entrypoints.
 - `data/manual-vote-questions.csv` is the review format for curated CDEP vote questions.
+- `scripts/sync-legislative-votes.ts` refreshes CDEP and Senate vote candidates into Supabase as inactive `needs_review` questions. `.github/workflows/legislative-vote-sync.yml` runs it daily when `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured as GitHub secrets.
 - `scripts/cache-photos.ts` downloads approved portraits once, creates optimized 640px portraits and 96px thumbnails, and rewrites the seed/mock data to use local `/photos/...` URLs.
 
 ## Photos

@@ -210,6 +210,11 @@ function votePrompt(question: PublicVoteQuestion | null, language: "en" | "ro"):
   return language === "ro" ? question.prompt_ro : question.prompt_en || question.prompt_ro;
 }
 
+function legislativeSourceLabel(source: string): string {
+  if (source === "senate") return "Senat";
+  return "Camera Deputaților";
+}
+
 export function Game() {
   const language = useLanguage();
   const t = TRANSLATIONS[language];
@@ -770,7 +775,8 @@ export function Game() {
                     <div className="mt-5 rounded-[9px] border border-slate-200 bg-white p-3">
                       <p className="text-[12px] font-black leading-snug text-slate-900">{voteQuestion.vote.title}</p>
                       <p className="mt-1 text-[10px] font-bold text-slate-500">
-                        {voteQuestion.vote.bill_number}
+                        {legislativeSourceLabel(voteQuestion.vote.source_chamber)}
+                        {voteQuestion.vote.bill_number ? ` · ${voteQuestion.vote.bill_number}` : ""}
                         {voteQuestion.vote.voted_at ? ` · ${voteQuestion.vote.voted_at}` : ""}
                         {voteQuestion.vote.vote_type ? ` · ${voteQuestion.vote.vote_type}` : ""}
                       </p>

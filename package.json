@@ -13,11 +13,13 @@
     "import:senate": "tsx scripts/import-senate.ts",
     "import:chamber": "tsx scripts/import-chamber.ts",
     "import:cdep-votes": "tsx scripts/import-cdep-votes.ts",
+    "import:senate-votes": "tsx scripts/import-senate-votes.ts",
     "import:government": "tsx scripts/import-government.ts",
     "import:meps": "tsx scripts/import-meps.ts",
     "merge:import": "tsx scripts/merge-import.ts",
     "cache:photos": "tsx scripts/cache-photos.ts",
-    "review:data": "tsx scripts/review-dataset.ts data/manual-review.csv"
+    "review:data": "tsx scripts/review-dataset.ts data/manual-review.csv",
+    "sync:legislative-votes": "tsx scripts/sync-legislative-votes.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",

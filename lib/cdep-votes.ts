@@ -6,10 +6,21 @@ export type ParsedCdepNominalVote = {
   title: string;
   billNumber: string;
   votedAt: string;
+  totals: {
+    for: number;
+    against: number;
+    abstain: number;
+    present: number;
+  };
 };
 
 function cleanText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function numberAfter(text: string, label: RegExp): number {
+  const match = text.match(label);
+  return Number(match?.[1] ?? 0);
 }
 
 export function parseCdepVoteLinks(html: string, baseUrl: string): string[] {
@@ -51,6 +62,12 @@ export function parseCdepNominalVoteHtml(html: string): ParsedCdepNominalVote {
     rows,
     title: heading || bodyText.slice(0, 140),
     billNumber,
-    votedAt
+    votedAt,
+    totals: {
+      present: numberAfter(bodyText, /Prezen(?:ț|t)i:\s*(\d+)/i),
+      for: numberAfter(bodyText, /Pentru:\s*(\d+)/i),
+      against: numberAfter(bodyText, /Contra:\s*(\d+)/i),
+      abstain: numberAfter(bodyText, /Ab(?:ț|t)ineri:\s*(\d+)/i)
+    }
   };
 }
