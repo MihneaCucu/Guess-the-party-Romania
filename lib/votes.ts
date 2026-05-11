@@ -19,14 +19,14 @@ export function normalizeVoteStance(value: string): VoteStance | null {
 
 export function voteStanceLabel(stance: VoteStance, language: "en" | "ro"): string {
   if (language === "ro") {
-    if (stance === "for") return "pentru";
-    if (stance === "against") return "împotrivă";
-    return "abținere";
+    if (stance === "for") return "PENTRU";
+    if (stance === "against") return "ÎMPOTRIVĂ";
+    return "ABȚINERE";
   }
 
-  if (stance === "for") return "for";
-  if (stance === "against") return "against";
-  return "abstain";
+  if (stance === "for") return "IN FAVOR";
+  if (stance === "against") return "AGAINST";
+  return "ABSTAINED";
 }
 
 export function computePartyPositions(voteId: string, rows: RawVoteRow[]): LegislativePartyPosition[] {

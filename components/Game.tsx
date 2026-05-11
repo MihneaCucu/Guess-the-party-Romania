@@ -642,6 +642,22 @@ export function Game() {
           <h1 aria-label="Guess The Party RO" className="shrink-0 rounded-[6px] bg-black px-[10px] py-[8px] text-[12px] font-black text-white shadow-sm">
             <Link href="/stats">{t.guessTheParty} · <span className="text-[10px] font-bold">{t.stats.toLowerCase()} →</span></Link>
           </h1>
+          <div className="flex shrink-0 items-center gap-[4px] rounded-[8px] border border-[#e4e6ee] bg-white p-[3px] shadow-sm">
+            {(["practice", "votes", "daily"] as GameMode[]).map((mode) => (
+              <button
+                className={clsx(
+                  "focus-ring h-[26px] rounded-[6px] px-[8px] text-[10px] font-black transition",
+                  gameMode === mode ? "bg-black text-white shadow-sm" : "bg-[#f7f8fb] text-slate-500 hover:bg-slate-100"
+                )}
+                disabled={loading && gameMode === mode}
+                key={mode}
+                onClick={() => switchMode(mode)}
+                type="button"
+              >
+                {mode === "practice" ? t.politicians : mode === "votes" ? t.votes : t.daily}
+              </button>
+            ))}
+          </div>
         </nav>
 
         <div className="order-2 flex w-full shrink-0 items-center justify-end gap-[12px] text-center sm:w-auto sm:gap-[17px]">
@@ -674,23 +690,6 @@ export function Game() {
       </header>
 
       <section className="mx-auto mt-6 flex w-[390px] max-w-[calc(100vw-24px)] flex-col items-center">
-        <div className="mb-[8px] grid w-full grid-cols-3 gap-[5px] rounded-[10px] border border-[#e4e6ee] bg-white p-[5px] shadow-sm">
-          {(["practice", "votes", "daily"] as GameMode[]).map((mode) => (
-            <button
-              className={clsx(
-                "focus-ring h-[28px] rounded-[7px] px-2 text-[10px] font-black transition",
-                gameMode === mode ? "bg-black text-white shadow-sm" : "bg-[#f7f8fb] text-slate-500 hover:bg-slate-100"
-              )}
-              disabled={loading && gameMode === mode}
-              key={mode}
-              onClick={() => switchMode(mode)}
-              type="button"
-            >
-              {mode === "practice" ? t.politicians : mode === "votes" ? t.votes : t.daily}
-            </button>
-          ))}
-        </div>
-
         {isDailyMode ? (
           <div className="mb-[10px] flex h-[40px] w-full items-center justify-between rounded-[10px] border border-[#e4e6ee] bg-white px-[12px] text-[11px] font-black text-slate-600 shadow-sm">
             <span data-testid="daily-progress-label">{t.dailyChallenge} · {dailyAnswered} / {dailyTotal}</span>
@@ -828,7 +827,7 @@ export function Game() {
                     {partyByKey.get(voteAnswer.question.target_party)?.label ?? voteAnswer.question.target_party_label}
                   </p>
                   <p className="mt-2 text-[12px] font-bold text-slate-600">
-                    {t.majority}: {formatPercent(voteAnswer.question.target_majority_share)} {voteStanceLabel(voteAnswer.question.target_stance, language)}
+                    {t.majority}: {formatPercent(voteAnswer.question.target_majority_share)} {t.voted} {voteStanceLabel(voteAnswer.question.target_stance, language)}
                     {" · "}
                     {t.youGuessed} {lastGuess.label}
                   </p>
