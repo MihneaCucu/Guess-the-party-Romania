@@ -31,22 +31,60 @@ const DEFAULT_SENATE_INDEX_URL = "https://www.senat.ro/voturiplen.aspx";
 const DRY_RUN = process.argv.includes("--dry-run");
 const MAX_LINKS = Number(process.env.LEGISLATIVE_SYNC_MAX_LINKS ?? 200);
 const MAX_SENATE_DAYS = Number(process.env.LEGISLATIVE_SYNC_MAX_SENATE_DAYS ?? 10);
+const FETCH_TIMEOUT_MS = Number(process.env.LEGISLATIVE_SYNC_FETCH_TIMEOUT_MS ?? 30000);
+const FETCH_RETRIES = Number(process.env.LEGISLATIVE_SYNC_FETCH_RETRIES ?? 3);
+const FETCH_RETRY_DELAY_MS = Number(process.env.LEGISLATIVE_SYNC_RETRY_DELAY_MS ?? 1500);
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestText(url: string, init: RequestInit = {}): Promise<string> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= FETCH_RETRIES; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const headers = new Headers(init.headers);
+    headers.set("User-Agent", "GuessThePartyRO/0.1 legislative vote sync");
+    try {
+      const response = await fetch(url, {
+        ...init,
+        headers,
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+      return response.text();
+    } catch (error) {
+      lastError = error;
+      if (attempt < FETCH_RETRIES) {
+        process.stderr.write(`Fetch failed for ${url} (attempt ${attempt}/${FETCH_RETRIES}): ${errorMessage(error)}\n`);
+        await sleep(FETCH_RETRY_DELAY_MS * attempt);
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw new Error(`Failed to fetch ${url} after ${FETCH_RETRIES} attempts: ${errorMessage(lastError)}`);
+}
 
 async function fetchText(url: string): Promise<string> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "GuessThePartyRO/0.1 legislative vote sync"
-      },
-      signal: controller.signal
-    });
-    if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
-    return response.text();
-  } finally {
-    clearTimeout(timeout);
-  }
+  return requestText(url);
+}
+
+async function postText(url: string, body: URLSearchParams): Promise<string> {
+  return requestText(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body
+  });
 }
 
 async function postSenateCalendar(url: string, sourceHtml: string, target: string, argument: string): Promise<string> {
@@ -56,22 +94,43 @@ async function postSenateCalendar(url: string, sourceHtml: string, target: strin
     __EVENTTARGET: target,
     __EVENTARGUMENT: argument
   });
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  return postText(url, body);
+}
+
+async function recordFailedRun(chamber: LegislativeSourceChamber, error: unknown): Promise<void> {
+  const message = errorMessage(error);
+  if (DRY_RUN) {
+    process.stderr.write(`${chamber} sync failed: ${message}\n`);
+    return;
+  }
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    process.stderr.write(`${chamber} sync failed before Supabase write: ${message}\n`);
+    return;
+  }
+
+  const db = createClient(url, key, { auth: { persistSession: false } });
+  const { error: insertError } = await db.from("legislative_import_runs").insert({
+    source_chamber: chamber,
+    finished_at: new Date().toISOString(),
+    status: "failed",
+    error: message
+  });
+  if (insertError) {
+    process.stderr.write(`Could not record ${chamber} sync failure: ${insertError.message}\n`);
+  }
+}
+
+async function runSource(chamber: LegislativeSourceChamber, syncSource: () => Promise<SyncBundle>): Promise<boolean> {
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "GuessThePartyRO/0.1 legislative vote sync"
-      },
-      body,
-      signal: controller.signal
-    });
-    if (!response.ok) throw new Error(`Failed to post ${url}: ${response.status}`);
-    return response.text();
-  } finally {
-    clearTimeout(timeout);
+    const bundle = await syncSource();
+    await writeBundle(bundle);
+    return true;
+  } catch (error) {
+    await recordFailedRun(chamber, error);
+    return false;
   }
 }
 
@@ -237,8 +296,13 @@ async function writeBundle(bundle: SyncBundle) {
 }
 
 async function main() {
-  for (const bundle of [await syncCdep(), await syncSenate()]) {
-    await writeBundle(bundle);
+  const results = [
+    await runSource("cdep", syncCdep),
+    await runSource("senate", syncSenate)
+  ];
+
+  if (!results.some(Boolean)) {
+    throw new Error("All legislative vote sources failed.");
   }
 }
 
