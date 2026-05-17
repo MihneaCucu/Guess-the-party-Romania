@@ -16,7 +16,20 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Check Supabase sync secrets
+        id: supabase-secrets
+        run: |
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping legislative vote sync because SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not configured as a GitHub Actions secret."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       - run: npm run sync:legislative-votes
+        if: steps.supabase-secrets.outputs.configured == 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
